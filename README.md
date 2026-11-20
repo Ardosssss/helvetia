@@ -5,12 +5,18 @@ Open-World-Spiel im Browser: die ganze Schweiz im Massstab 1:1 mit echtem Gelän
 
 ## Spielen
 
-Das Spiel besteht nur aus statischen Dateien. Lokal starten:
+Das Spiel besteht nur aus statischen Dateien. Die grossen Spieldaten (Gelände, Luftbilder, Regionen, Bäume)
+liegen nicht im Repository, sondern in einem Cloudflare-R2-Bucket; das Spiel lädt sie von dort
+(`DATA_URL` in `src/a_core.js`). Lokal starten:
 
 ```sh
 python3 -m http.server 8000
 # dann http://localhost:8000 öffnen
 ```
+
+Der Bucket gibt seine Dateien nur an eingetragene Adressen heraus (CORS). Für den lokalen Start entweder
+`http://localhost:8000` in den CORS-Regeln des Buckets ergänzen oder die Daten mit der Pipeline selbst erzeugen
+und `http://localhost:8000/?data=lokal` öffnen: dann liest das Spiel die Ordner `w/`, `r/`, `n/`, `z/` neben `index.html`.
 
 Online über GitHub Pages: *Settings → Pages → Build and deployment → Deploy from a branch*,
 Branch wählen, Ordner `/ (root)`.
@@ -57,18 +63,23 @@ Eine rosa Linie führt auf befahrbaren Strassen zum nächsten lokalen Kurierpunk
 | `index.html` | fertig gebautes Spiel (aus `src/`, nicht von Hand ändern) |
 | `src/` | Quellcode: `head.html` (Seite, HUD), `a_core.js` (Grundlagen, Höhenmodell), `b_world.js` (Gelände, Luftbilder), `c_zone.js` (Regionen, Gebäude, Strassen), `d_ent.js` (Fahrzeuge, Figuren, Verkehr), `navigation.js` (lokale Strassenrouten), `e_game.js` (Ablauf, Karte, Garage, HUD) |
 | `build.sh` | setzt `src/` zu `index.html` zusammen |
+| `pipeline/` | Python-Skripte, die alle Daten aus den Quellen erzeugen und in den Bucket laden |
+
+Die folgenden Ordner entstehen durch die Pipeline und liegen im R2-Bucket (nicht im Repository):
+
+| Pfad | Inhalt |
+|---|---|
 | `w/` | Landesdaten: Höhenmodell 100 m (`dem*.png`), Luftbilder Schweiz (`ortho.jpg`, `n_*.jpg`) und Kanton Luzern (`l_*.jpg`), Ortsliste, Index mit Tunnelportalen |
-| `r/` | 86 Regionen (je 8 × 8 km): `*.json` mit Strassen, Wasser, Bäumen, Höhenraster 25 m und den Gebäuden ohne Vermessungsdach; `*.b3z` mit den echten Dachformen (swissBUILDINGS3D, rund 470 000 Gebäude, komprimiertes Binärformat, siehe `pipeline/regions.py`); `*.trz` mit echten Bäumen (Standort, Höhe, Krone) im Schwerpunktgebiet |
+| `r/` | 86 Regionen (je 8 × 8 km): `*.json` mit Strassen, Wasser, Bäumen, Höhenraster 25 m und den Gebäuden ohne Vermessungsdach; `*.b3z` mit den echten Dachformen (swissBUILDINGS3D, rund 470 000 Gebäude, komprimiertes Binärformat, siehe `pipeline/regions.py`); `*.trz` mit echten Bäumen (Standort, Höhe, Krone) im ganzen Kanton Luzern sowie in Biel, Nidau und Port |
 | `n/` | Hauptstrassen ausserhalb der Detailgebiete |
-| `z/` | Luftbilder der 144 Orte (rund 1 m pro Pixel, auf das 800-m-Geländeraster ausgerichtet) und besonders scharfe 800-m-Kacheln `h_*.jpg` (0,4 m pro Pixel) für Gunzwil, Beromünster, Neudorf, Hildisrieden, die Strasse bis Luzern, Luzern, Biel, Nidau und Port |
-| `pipeline/` | Python-Skripte, die alle Daten aus den Quellen erzeugen |
+| `z/` | Luftbilder der 144 Orte (rund 1 m pro Pixel, auf das 800-m-Geländeraster ausgerichtet) und besonders scharfe 800-m-Kacheln `h_*.jpg` (0,4 m pro Pixel) für den ganzen Kanton Luzern sowie Biel, Nidau und Port (2595 Kacheln, rund 1,9 GB) |
 
 Nach Änderungen in `src/`: `./build.sh` ausführen und `index.html` mit einchecken.
 
 ## Daten neu erzeugen
 
-Die Skripte in `pipeline/` erwarten die Rohdaten in `data/` (nicht im Repository, rund 4 GB)
-und schreiben nach `w/`, `r/`, `n/`, `z/`. Benötigt: Python 3 mit `osmium`, `shapely`,
+Die Skripte in `pipeline/` erwarten die Rohdaten in `data/` (nicht im Repository; alles zusammen rund 40 GB,
+davon gut 25 GB Oberflächenmodell für die Bäume) und schreiben nach `w/`, `r/`, `n/`, `z/`. Benötigt: Python 3 mit `osmium`, `shapely`,
 `numpy`, `scipy`, `pillow`, `tifffile`, `imagecodecs`, `pyproj`, `pyogrio`, `mapbox_earcut`.
 
 ```sh
@@ -83,13 +94,19 @@ python3 nat.py dem         # Höhenmodell Schweiz 100 m + Seen
 python3 nat.py nat12       # Luftbild Schweiz 25 m/px
 python3 nat.py lu14        # Luftbild Kanton Luzern 6,25 m/px
 python3 aerial.py          # Luftbilder der Orte
-python3 hires.py           # besonders scharfe Kacheln für das Schwerpunktgebiet (Orte und Strecken in focus.py)
+python3 hires.py           # besonders scharfe Kacheln für das Schwerpunktgebiet (Kanton Luzern, Orte und Strecken in focus.py)
 python3 b3d_list.py        # Kachelliste swissBUILDINGS3D 3.0 für das Detailgebiet
-python3 b3d_fetch.py       # Dachflächen aus den CityGML-Kacheln (rund 4,5 GB Download)
+python3 b3d_fetch.py       # Dachflächen aus den CityGML-Kacheln (rund 4,5 GB Download; mit `baeume` nur das Schwerpunktgebiet, genügt für trees.py)
 python3 b3d_gdb.py         # Kacheln, die es nur als FileGDB gibt (Genf, Lausanne, Wallis, Graubünden)
 python3 regions.py         # Regionen, Landesstrassen, Tunnel, Index
-python3 trees.py           # echte Bäume im Schwerpunktgebiet (swissSURFACE3D minus swissALTI3D, rund 2 GB Download)
+python3 trees.py           # echte Bäume im Schwerpunktgebiet (swissSURFACE3D minus swissALTI3D, rund 25 GB Download; braucht die Kacheln von hires.py)
+python3 upload.py          # geänderte Dateien aus w/, r/, n/, z/ in den R2-Bucket laden
 ```
+
+`upload.py` überträgt nur, was sich seit dem letzten Lauf geändert hat (Prüfsummen in `manifest.json` im Bucket).
+`python3 upload.py test` prüft den Zugang mit einer kleinen Testdatei, `--loeschen` entfernt Dateien im Bucket,
+die es lokal nicht mehr gibt. Der Zugang braucht einen Cloudflare-API-Token mit dem Recht *Workers R2 Storage: Edit*
+in der Umgebungsvariable `CLOUDFLARE_API_TOKEN`. Bucket, Konto und öffentliche Adresse stehen am Anfang des Skripts.
 
 `pipeline/geo.py` enthält einen fest eingetragenen Pfad für das Zertifikatsbündel der
 Entwicklungsumgebung; ausserhalb davon die Zeile mit `cafile=` anpassen.

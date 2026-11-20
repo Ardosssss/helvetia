@@ -340,8 +340,13 @@ const hit = { x: 0, z: 0, nx: 0, nz: 0, on: false };
 /* ============================================================ Luftbilder: grob fuers Land, fein fuer Kanton Luzern und die Orte */
 const IMGS = []; let nightMats = [], imgLoading = 0, camX = 0, camZ = 0;
 function addImg(x0, z0, x1, z1, url, maxL, pr, amp) { const im = { x0, z0, x1, z1, url, maxL, pr, amp, state: 'none', tex: null, mat: null, el: null, roofMat: null, t: 0 }; IMGS.push(im); return im; }
-function imgReady(im, el) { im.el = el; if (im.pr <= 2) { const c = document.createElement('canvas'); c.width = c.height = im.pr ? 1024 : 2048; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(el, 0, 0, c.width, c.height); im.px = g.getImageData(0, 0, c.width, c.height).data; im.pw = c.width; } im.tex = imgTexture(el); im.mat = withDetail(new THREE.MeshLambertMaterial({ map: im.tex }), (im.x1 - im.x0) / 2.5, (im.z1 - im.z0) / 2.5, im.amp); im.state = 'ready'; if (im.roofMat) { im.roofMat.map = im.tex; im.roofMat.color.set(0xffffff); im.roofMat.needsUpdate = true; } dirtyRect(im.x0, im.z0, im.x1, im.z1, im.maxL); }
+function imgReady(im, el) { im.el = el; if (im.pr <= 2) { const c = document.createElement('canvas'); c.width = c.height = im.pr ? 1024 : 2048; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(el, 0, 0, c.width, c.height); im.px = g.getImageData(0, 0, c.width, c.height).data; im.pw = c.width; } im.tex = imgTexture(el); im.mat = withDetail(new THREE.MeshLambertMaterial({ map: im.tex }), (im.x1 - im.x0) / 2.5, (im.z1 - im.z0) / 2.5, im.amp); im.state = 'ready'; if (im.pr === 4 && typeof b3Dirty === 'function') b3Dirty(im); if (im.roofMat) { im.roofMat.map = im.tex; im.roofMat.color.set(0xffffff); im.roofMat.needsUpdate = true; } dirtyRect(im.x0, im.z0, im.x1, im.z1, im.maxL); }
+/* Besonders scharfe 800-m-Kacheln (pr 4): nur rund um die Kamera geladen, weiter weg wieder freigegeben */
+function updHi() { for (const im of IMGS) { if (im.pr !== 4) continue; const d = Math.hypot(clamp(camX, im.x0, im.x1) - camX, clamp(camZ, im.z0, im.z1) - camZ);
+    if (im.state === 'none') { if (d < 900) im.state = 'want'; } else if (im.state === 'want') { if (d > 1200) im.state = 'none'; }
+    else if (im.state === 'ready' && d > 1400) { im.state = 'none'; im.tex.dispose(); im.mat.dispose(); im.tex = im.mat = im.el = null; if (im.roofMat) { im.roofMat.map = null; im.roofMat.color.set(0x8a8780); im.roofMat.needsUpdate = true; } dirtyRect(im.x0, im.z0, im.x1, im.z1, 0); } } }
 function pumpImages() {
+  updHi();
   if (imgLoading >= 2) return; let best = null, bd = 1e18;
   for (const im of IMGS) if (im.state === 'want') { const d = Math.hypot(clamp(camX, im.x0, im.x1) - camX, clamp(camZ, im.z0, im.z1) - camZ) - im.pr * 500; if (d < bd) { bd = d; best = im; } }
   if (!best) return; best.state = 'loading'; imgLoading++;
@@ -350,7 +355,7 @@ function pumpImages() {
 function evictImages() { for (const pr of [3, 2, 1]) { const lim = pr === 3 ? (coarse ? 2 : 5) : pr === 2 ? (coarse ? 2 : 4) : (coarse ? 1 : 3), list = IMGS.filter(im => im.pr === pr && im.state === 'ready'); if (list.length <= lim) continue;
     list.sort((a, b) => Math.hypot(clamp(camX, a.x0, a.x1) - camX, clamp(camZ, a.z0, a.z1) - camZ) - Math.hypot(clamp(camX, b.x0, b.x1) - camX, clamp(camZ, b.z0, b.z1) - camZ));
     for (const im of list.slice(lim)) { if (Math.hypot(clamp(camX, im.x0, im.x1) - camX, clamp(camZ, im.z0, im.z1) - camZ) < 600) continue; im.state = 'none'; im.tex.dispose(); im.mat.dispose(); im.tex = im.mat = im.el = im.px = null; if (im.roofMat) { im.roofMat.map = null; im.roofMat.color.set(0x8a8780); im.roofMat.needsUpdate = true; } dirtyRect(im.x0, im.z0, im.x1, im.z1, im.maxL); } } }
-function pickImg(x0, z0, x1, z1, L) { let best = null, ready = null; for (const im of IMGS) { if (im.maxL < L || im.x0 > x0 || im.z0 > z0 || im.x1 < x1 || im.z1 < z1 || im.state === 'failed') continue; if (!best || im.pr > best.pr) best = im; if (im.state === 'ready' && (!ready || im.pr > ready.pr)) ready = im; }
+function pickImg(x0, z0, x1, z1, L) { let best = null, ready = null; for (const im of IMGS) { if (im.maxL < L || im.x0 > x0 || im.z0 > z0 || im.x1 < x1 || im.z1 < z1 || im.state === 'failed' || (im.pr === 4 && im.state !== 'ready')) continue; if (!best || im.pr > best.pr) best = im; if (im.state === 'ready' && (!ready || im.pr > ready.pr)) ready = im; }
   if (best && best.state === 'none') best.state = 'want'; return ready; }
 function imgAt(x, z) { let r = null; for (const im of IMGS) if (im.state === 'ready' && im.x0 <= x && im.x1 >= x && im.z0 <= z && im.z1 >= z && (!r || im.pr > r.pr)) r = im; return r; }
 function patchAt(x0, z0, x1, z1) { for (const im of IMGS) if (im.pr === 3 && im.x0 <= x0 && im.z0 <= z0 && im.x1 >= x1 && im.z1 >= z1) return im; return null; }
@@ -622,7 +627,7 @@ async function buildRegion(R, d, b3) {
   const towns = PLACES.filter(p => p.kind !== 'village' && p.x > x0 - 2500 && p.x < x0 + REG + 2500 && p.z > z0 - 2500 && p.z < z0 + REG + 2500);
   R.set = makeRoadSet(d.roads, d.names, x0, z0, towns.length ? (x, z) => towns.some(p => Math.hypot(x - p.x, z - p.z) < p.r + 250) : null); R.far.push(...R.set.far); await tick();
   /* Gebaeude */
-  const CH = 400, chunks = new Map(), patches = IMGS.filter(im => im.pr === 3 && im.x0 < x0 + REG && im.x1 > x0 && im.z0 < z0 + REG && im.z1 > z0); R.patches = patches; if (b3) b3Init(R, b3);
+  const CH = 400, chunks = new Map(), patches = IMGS.filter(im => im.pr === 3 && im.x0 < x0 + REG && im.x1 > x0 && im.z0 < z0 + REG && im.z1 > z0); R.patches = patches; R.hi = IMGS.filter(im => im.pr === 4 && im.x0 < x0 + REG && im.x1 > x0 && im.z0 < z0 + REG && im.z1 > z0); if (b3) b3Init(R, b3);
   const chunk = (x, z) => { const k = Math.floor(x / CH) + ',' + Math.floor(z / CH); let c = chunks.get(k); if (!c) chunks.set(k, c = { w: [0, 1, 2, 3, 4, 5].map(() => ({ pos: [], nor: [], uv: [], col: [], idx: [] })), gf: { pos: [], nor: [], uv: [], col: [], idx: [] }, r: { pos: [], nor: [], col: [] }, rt: { pos: [], nor: [], col: [], uv: [] }, rp: new Map(), x: (Math.floor(x / CH) + .5) * CH + x0, z: (Math.floor(z / CH) + .5) * CH + z0 }); return c; };
   let Rf, Rt, Rp, Pim, rc, tux = 1, tuz = 0;
   const tri = (ax, ay, az, bx, by, bz, cx, cy, cz, c, tile) => { const ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx - ax, vy = cy - ay, vz = cz - az; let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz); if (l < 1e-6) return; nx /= l; ny /= l; nz /= l;
@@ -713,8 +718,9 @@ function b3Build(R, C, lod) {
     let sh = gr ? clamp(gmin - gr, -5, 5) : 0; if (ymin + sh < gmin + 2.1) sh = gmin + 2.1 - ymin;
     if (sh) { for (let i = 0; i < nV; i++) B3Y[i] += sh; ymin += sh; }
     const hs = h2(U[p0 + 6], U[p0 + 8]), wc = WALLC[ty][hs * WALLC[ty].length | 0], sd = (.9 + h2(U[p0 + 8], U[p0 + 6]) * .16) * 255, cr = Math.min(255, wc[0] * sd) | 0, cg = Math.min(255, wc[1] * sd) | 0, cb = Math.min(255, wc[2] * sd) | 0;
-    let rr, rg, rb; if (bc >= 4096) { _col.setRGB(Math.min(1, ((bc >> 8 & 15) / 15) * 1.12 + .03), Math.min(1, ((bc >> 4 & 15) / 15) * 1.12 + .03), Math.min(1, ((bc & 15) / 15) * 1.12 + .03), THREE.SRGBColorSpace); rr = _col.r * 255 | 0; rg = _col.g * 255 | 0; rb = _col.b * 255 | 0; } else { const pal = ty === 3 ? ROOFC.metal : ty === 4 ? ROOFC.old : ty === 0 || ty === 5 ? ROOFC.tile : ROOFC.flat, q = pal[h2(U[p0 + 6] + 7, U[p0 + 8]) * pal.length | 0]; rr = q[0] * 255 | 0; rg = q[1] * 255 | 0; rb = q[2] * 255 | 0; }
-    let Pim = null, Rp = null; for (const im of R.patches) if (im.x0 <= xa + x0 - 1 && im.x1 >= xb + x0 + 1 && im.z0 <= za + z0 - 1 && im.z1 >= zb + z0 + 1) { Pim = im; break; }
+    let rr, rg, rb; if (bc >= 4096) { /* gemessene Dachfarbe: etwas kraeftiger und dunkler, weil die Sonne im Spiel die Dachflaeche zusaetzlich aufhellt */ const q0 = (bc >> 8 & 15) / 15, q1 = (bc >> 4 & 15) / 15, q2 = (bc & 15) / 15, qm = (q0 + q1 + q2) / 3; _col.setRGB(clamp((qm + (q0 - qm) * 1.3) * .9, 0, 1), clamp((qm + (q1 - qm) * 1.3) * .9, 0, 1), clamp((qm + (q2 - qm) * 1.3) * .9, 0, 1), THREE.SRGBColorSpace); rr = _col.r * 255 | 0; rg = _col.g * 255 | 0; rb = _col.b * 255 | 0; } else { const pal = ty === 3 ? ROOFC.metal : ty === 4 ? ROOFC.old : ty === 0 || ty === 5 ? ROOFC.tile : ROOFC.flat, q = pal[h2(U[p0 + 6] + 7, U[p0 + 8]) * pal.length | 0]; rr = q[0] * 255 | 0; rg = q[1] * 255 | 0; rb = q[2] * 255 | 0; }
+    let Pim = null, Rp = null; if (full) for (const im of R.hi) if (im.state === 'ready' && im.x0 <= xa + x0 && im.x1 >= xb + x0 && im.z0 <= za + z0 && im.z1 >= zb + z0) { Pim = im; break; }
+    if (!Pim) for (const im of R.patches) if (im.x0 <= xa + x0 - 1 && im.x1 >= xb + x0 + 1 && im.z0 <= za + z0 - 1 && im.z1 >= zb + z0 + 1) { Pim = im; break; }
     if (Pim) { Rp = RP.get(Pim); if (!Rp) RP.set(Pim, Rp = mk(1, 0, 0)); }
     /* Dachflaechen */
     for (let i = 0; i < nT; i++) { const a = U[t0 + i * 3]; let b = U[t0 + i * 3 + 1], c = U[t0 + i * 3 + 2];
@@ -755,6 +761,7 @@ function b3Build(R, C, lod) {
   W.forEach((o, ty) => add(o, zFac[ty])); add(G, zGround); add(Rf, zRoofMat); add(Rt, zTileMat); for (const [im, o] of RP) add(o, roofMatOf(im));
   if (old) { for (const m of old) { R.g.remove(m); m.geometry.dispose(); } const dead = new Set(old); R.far = R.far.filter(m => !dead.has(m)); }
 }
+function b3Dirty(im) { for (const R of regions.values()) if (R.b3 && R.state === 'ready') for (const C of R.b3.ch) if (C.lod === 2 && C.x > im.x0 - 250 && C.x < im.x1 + 250 && C.z > im.z0 - 250 && C.z < im.z1 + 250) C.lod = 1; }
 const _b3q = [];
 function updB3(px, pz, lim, sync) { const rb = sync ? sync : lim + 520; _b3q.length = 0;
   for (const R of regions.values()) { if (R.state !== 'ready' || !R.b3) continue; if (Math.hypot(clamp(px, R.x0, R.x0 + REG) - px, clamp(pz, R.z0, R.z0 + REG) - pz) > rb + 900) { if (!sync) for (const C of R.b3.ch) if (C.ms) b3Free(R, C); continue; }
@@ -1357,6 +1364,7 @@ async function boot(hot) {
     const [index, places, nat0] = await Promise.all([getJSON('w/index.json'), getJSON('w/places.json'), loadImage('w/ortho.jpg')]);
     const im0 = addImg(MAP0.x0, MAP0.z0, MAP0.x0 + MAP0.w, MAP0.z0 + MAP0.h, 'w/ortho.jpg', 4, 0, .5); imgReady(im0, nat0);
     for (const [i, j] of index.n12) addImg(i * 102400, j * 102400, (i + 1) * 102400, (j + 1) * 102400, 'w/n_' + i + '_' + j + '.jpg', 2, 1, .5);
+    if (!coarse) for (const [i, j] of index.hi || []) addImg(i * 800, j * 800, (i + 1) * 800, (j + 1) * 800, 'z/h_' + i + '_' + j + '.jpg', 0, 4, .16);
     for (const [i, j] of index.lu) addImg(i * 25600, j * 25600, (i + 1) * 25600, (j + 1) * 25600, 'w/l_' + i + '_' + j + '.jpg', 1, 2, .4);
     initPlaces(places);
     await say('Lade Höhenmodell …'); await loadDEM(index.dem);

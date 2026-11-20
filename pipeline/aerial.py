@@ -2,6 +2,7 @@
 import json, math, sys, os, io, time, urllib.request, ssl
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
+from geo import img_rect, lon_of, lat_of
 OUT='../z/'; CACHE='../data/tiles/'; os.makedirs(OUT,exist_ok=True)
 places=json.load(open('places.json'))
 only=set(sys.argv[1].split(',')) if len(sys.argv)>1 else None
@@ -25,9 +26,8 @@ for p in places:
     if only and p['id'] not in only: continue
     out=OUT+p['id']+'.jpg'
     if os.path.exists(out): continue
-    la=math.radians(p['lat']); kx=111412.84*math.cos(la)-93.5*math.cos(3*la); kz=111132.92-559.82*math.cos(2*la)
-    half=p['r']+170; z=17; cap=4096 if p['kind']=='big' else 3072 if p['kind']!='village' else 1600
-    x0,x1=fx(p['lon']-half/kx,z),fx(p['lon']+half/kx,z); y0,y1=fy(p['lat']+half/kz,z),fy(p['lat']-half/kz,z)
+    wx0,wz0,wx1,wz1=img_rect(p); z=17; cap=min(4096,round(wx1-wx0))
+    x0,x1=fx(lon_of(wx0),z),fx(lon_of(wx1),z); y0,y1=fy(lat_of(wz0),z),fy(lat_of(wz1),z)
     tx0,tx1,ty0,ty1=int(x0),int(x1),int(y0),int(y1)
     jobs=[(x,y) for y in range(ty0,ty1+1) for x in range(tx0,tx1+1)]
     ims=list(ex.map(lambda q: tile(z,q[0],q[1]),jobs))
@@ -37,7 +37,6 @@ for p in places:
         if im is None: miss+=1; continue
         mos.paste(im,((x-tx0)*256,(y-ty0)*256))
     crop=mos.crop((round((x0-tx0)*256),round((y0-ty0)*256),round((x1-tx0)*256),round((y1-ty0)*256)))
-    if max(crop.size)>cap: s=cap/max(crop.size); crop=crop.resize((round(crop.width*s),round(crop.height*s)),Image.LANCZOS)
+    crop=crop.resize((cap,cap),Image.LANCZOS)
     crop.save(out,'JPEG',quality=70,optimize=True,progressive=True)
-    json.dump([-half,-half,half,half],open(OUT+p['id']+'.ext','w'))
     print(p['id'],p['name'],len(jobs),'tiles',miss,'missing',crop.size,os.path.getsize(out)//1024,'KB',flush=True)

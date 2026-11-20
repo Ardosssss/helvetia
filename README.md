@@ -60,7 +60,7 @@ Eine rosa Linie führt auf befahrbaren Strassen zum nächsten lokalen Kurierpunk
 | `w/` | Landesdaten: Höhenmodell 100 m (`dem*.png`), Luftbilder Schweiz (`ortho.jpg`, `n_*.jpg`) und Kanton Luzern (`l_*.jpg`), Ortsliste, Index mit Tunnelportalen |
 | `r/` | 86 Regionen (je 8 × 8 km): `*.json` mit Strassen, Wasser, Bäumen, Höhenraster 25 m und den Gebäuden ohne Vermessungsdach; `*.b3z` mit den echten Dachformen (swissBUILDINGS3D, rund 470 000 Gebäude, komprimiertes Binärformat, siehe `pipeline/regions.py`) |
 | `n/` | Hauptstrassen ausserhalb der Detailgebiete |
-| `z/` | scharfe Luftbilder der 142 Orte |
+| `z/` | Luftbilder der 144 Orte (rund 1 m pro Pixel, auf das 800-m-Geländeraster ausgerichtet) und besonders scharfe 800-m-Kacheln `h_*.jpg` (0,4 m pro Pixel) für Gunzwil, Beromünster, Neudorf, Hildisrieden, die Strasse bis Luzern, Luzern, Biel, Nidau und Port |
 | `pipeline/` | Python-Skripte, die alle Daten aus den Quellen erzeugen |
 
 Nach Änderungen in `src/`: `./build.sh` ausführen und `index.html` mit einchecken.
@@ -76,13 +76,14 @@ mkdir -p data && cd data
 curl -LO https://planet.osm.ch/switzerland-exact.osm.pbf && mv switzerland-exact.osm.pbf ch.osm.pbf
 curl -Lo lu.osm.pbf https://download.openstreetmap.fr/extracts/europe/switzerland/lucerne-latest.osm.pbf
 cd ../pipeline
-python3 places.py          # Ortsliste (27 Städte + Orte im Kanton Luzern)
+python3 places.py          # Ortsliste (29 Städte und Orte + alle Orte im Kanton Luzern)
 python3 coverage.py        # Detailgebiet und Regionenraster
 python3 alti.py            # swissALTI3D-Höhenkacheln laden
 python3 nat.py dem         # Höhenmodell Schweiz 100 m + Seen
 python3 nat.py nat12       # Luftbild Schweiz 25 m/px
 python3 nat.py lu14        # Luftbild Kanton Luzern 6,25 m/px
 python3 aerial.py          # Luftbilder der Orte
+python3 hires.py           # besonders scharfe Kacheln für ausgewählte Orte und Strecken (Liste oben im Skript)
 python3 b3d_list.py        # Kachelliste swissBUILDINGS3D 3.0 für das Detailgebiet
 python3 b3d_fetch.py       # Dachflächen aus den CityGML-Kacheln (rund 4,5 GB Download)
 python3 b3d_gdb.py         # Kacheln, die es nur als FileGDB gibt (Genf, Lausanne, Wallis, Graubünden)

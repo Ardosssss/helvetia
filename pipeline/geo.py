@@ -5,6 +5,11 @@ def wx(lon): return (lon - LON_C) * KXM
 def wz(lat): return -(lat - LAT_C) * KZM
 def lon_of(x): return LON_C + x / KXM
 def lat_of(z): return LAT_C - z / KZM
+def img_rect(p):
+    """Luftbild-Ausschnitt eines Ortes in Weltkoordinaten (x0, z0, x1, z1), auf das 800-m-Gelaenderaster ausgerichtet,
+    damit jede Gelaendekachel im Ort vollstaendig im scharfen Bild liegt."""
+    n = max(2, math.ceil((2 * p['r'] + 340) / 800)); x0 = round((wx(p['lon']) - n * 400) / 800) * 800; z0 = round((wz(p['lat']) - n * 400) / 800) * 800
+    return x0, z0, x0 + n * 800, z0 + n * 800
 REG = 8000.0          # Regionsgroesse
 LAT = 25.0            # Gitter
 def lv95(lon, lat):

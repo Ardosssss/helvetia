@@ -268,6 +268,7 @@ async function boot(hot) {
     const [index, places, nat0] = await Promise.all([getJSON('w/index.json'), getJSON('w/places.json'), loadImage('w/ortho.jpg')]);
     const im0 = addImg(MAP0.x0, MAP0.z0, MAP0.x0 + MAP0.w, MAP0.z0 + MAP0.h, 'w/ortho.jpg', 4, 0, .5); imgReady(im0, nat0);
     for (const [i, j] of index.n12) addImg(i * 102400, j * 102400, (i + 1) * 102400, (j + 1) * 102400, 'w/n_' + i + '_' + j + '.jpg', 2, 1, .5);
+    if (!coarse) for (const [i, j] of index.hi || []) addImg(i * 800, j * 800, (i + 1) * 800, (j + 1) * 800, 'z/h_' + i + '_' + j + '.jpg', 0, 4, .16);
     for (const [i, j] of index.lu) addImg(i * 25600, j * 25600, (i + 1) * 25600, (j + 1) * 25600, 'w/l_' + i + '_' + j + '.jpg', 1, 2, .4);
     initPlaces(places);
     await say('Lade Höhenmodell …'); await loadDEM(index.dem);

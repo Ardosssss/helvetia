@@ -1,8 +1,13 @@
 /* ============================================================ Luftbilder: grob fuers Land, fein fuer Kanton Luzern und die Orte */
 const IMGS = []; let nightMats = [], imgLoading = 0, camX = 0, camZ = 0;
 function addImg(x0, z0, x1, z1, url, maxL, pr, amp) { const im = { x0, z0, x1, z1, url, maxL, pr, amp, state: 'none', tex: null, mat: null, el: null, roofMat: null, t: 0 }; IMGS.push(im); return im; }
-function imgReady(im, el) { im.el = el; if (im.pr <= 2) { const c = document.createElement('canvas'); c.width = c.height = im.pr ? 1024 : 2048; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(el, 0, 0, c.width, c.height); im.px = g.getImageData(0, 0, c.width, c.height).data; im.pw = c.width; } im.tex = imgTexture(el); im.mat = withDetail(new THREE.MeshLambertMaterial({ map: im.tex }), (im.x1 - im.x0) / 2.5, (im.z1 - im.z0) / 2.5, im.amp); im.state = 'ready'; if (im.roofMat) { im.roofMat.map = im.tex; im.roofMat.color.set(0xffffff); im.roofMat.needsUpdate = true; } dirtyRect(im.x0, im.z0, im.x1, im.z1, im.maxL); }
+function imgReady(im, el) { im.el = el; if (im.pr <= 2) { const c = document.createElement('canvas'); c.width = c.height = im.pr ? 1024 : 2048; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(el, 0, 0, c.width, c.height); im.px = g.getImageData(0, 0, c.width, c.height).data; im.pw = c.width; } im.tex = imgTexture(el); im.mat = withDetail(new THREE.MeshLambertMaterial({ map: im.tex }), (im.x1 - im.x0) / 2.5, (im.z1 - im.z0) / 2.5, im.amp); im.state = 'ready'; if (im.pr === 4 && typeof b3Dirty === 'function') b3Dirty(im); if (im.roofMat) { im.roofMat.map = im.tex; im.roofMat.color.set(0xffffff); im.roofMat.needsUpdate = true; } dirtyRect(im.x0, im.z0, im.x1, im.z1, im.maxL); }
+/* Besonders scharfe 800-m-Kacheln (pr 4): nur rund um die Kamera geladen, weiter weg wieder freigegeben */
+function updHi() { for (const im of IMGS) { if (im.pr !== 4) continue; const d = Math.hypot(clamp(camX, im.x0, im.x1) - camX, clamp(camZ, im.z0, im.z1) - camZ);
+    if (im.state === 'none') { if (d < 900) im.state = 'want'; } else if (im.state === 'want') { if (d > 1200) im.state = 'none'; }
+    else if (im.state === 'ready' && d > 1400) { im.state = 'none'; im.tex.dispose(); im.mat.dispose(); im.tex = im.mat = im.el = null; if (im.roofMat) { im.roofMat.map = null; im.roofMat.color.set(0x8a8780); im.roofMat.needsUpdate = true; } dirtyRect(im.x0, im.z0, im.x1, im.z1, 0); } } }
 function pumpImages() {
+  updHi();
   if (imgLoading >= 2) return; let best = null, bd = 1e18;
   for (const im of IMGS) if (im.state === 'want') { const d = Math.hypot(clamp(camX, im.x0, im.x1) - camX, clamp(camZ, im.z0, im.z1) - camZ) - im.pr * 500; if (d < bd) { bd = d; best = im; } }
   if (!best) return; best.state = 'loading'; imgLoading++;
@@ -11,7 +16,7 @@ function pumpImages() {
 function evictImages() { for (const pr of [3, 2, 1]) { const lim = pr === 3 ? (coarse ? 2 : 5) : pr === 2 ? (coarse ? 2 : 4) : (coarse ? 1 : 3), list = IMGS.filter(im => im.pr === pr && im.state === 'ready'); if (list.length <= lim) continue;
     list.sort((a, b) => Math.hypot(clamp(camX, a.x0, a.x1) - camX, clamp(camZ, a.z0, a.z1) - camZ) - Math.hypot(clamp(camX, b.x0, b.x1) - camX, clamp(camZ, b.z0, b.z1) - camZ));
     for (const im of list.slice(lim)) { if (Math.hypot(clamp(camX, im.x0, im.x1) - camX, clamp(camZ, im.z0, im.z1) - camZ) < 600) continue; im.state = 'none'; im.tex.dispose(); im.mat.dispose(); im.tex = im.mat = im.el = im.px = null; if (im.roofMat) { im.roofMat.map = null; im.roofMat.color.set(0x8a8780); im.roofMat.needsUpdate = true; } dirtyRect(im.x0, im.z0, im.x1, im.z1, im.maxL); } } }
-function pickImg(x0, z0, x1, z1, L) { let best = null, ready = null; for (const im of IMGS) { if (im.maxL < L || im.x0 > x0 || im.z0 > z0 || im.x1 < x1 || im.z1 < z1 || im.state === 'failed') continue; if (!best || im.pr > best.pr) best = im; if (im.state === 'ready' && (!ready || im.pr > ready.pr)) ready = im; }
+function pickImg(x0, z0, x1, z1, L) { let best = null, ready = null; for (const im of IMGS) { if (im.maxL < L || im.x0 > x0 || im.z0 > z0 || im.x1 < x1 || im.z1 < z1 || im.state === 'failed' || (im.pr === 4 && im.state !== 'ready')) continue; if (!best || im.pr > best.pr) best = im; if (im.state === 'ready' && (!ready || im.pr > ready.pr)) ready = im; }
   if (best && best.state === 'none') best.state = 'want'; return ready; }
 function imgAt(x, z) { let r = null; for (const im of IMGS) if (im.state === 'ready' && im.x0 <= x && im.x1 >= x && im.z0 <= z && im.z1 >= z && (!r || im.pr > r.pr)) r = im; return r; }
 function patchAt(x0, z0, x1, z1) { for (const im of IMGS) if (im.pr === 3 && im.x0 <= x0 && im.z0 <= z0 && im.x1 >= x1 && im.z1 >= z1) return im; return null; }

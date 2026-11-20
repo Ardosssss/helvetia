@@ -3,7 +3,7 @@ D='../data/'
 CIT=[('ZH','Zürich',8.54,47.37,1700,'big'),('GE','Genf',6.14,46.20,1600,'big'),('BS','Basel',7.59,47.56,1600,'big'),('BE','Bern',7.45,46.95,1600,'big'),('LS','Lausanne',6.63,46.52,1500,'big'),('LU','Luzern',8.31,47.05,1600,'big'),
 ('SG','St. Gallen',9.38,47.42,1200,'town'),('LG','Lugano',8.95,46.00,1200,'town'),('CH','Chur',9.53,46.85,1100,'town'),('SI','Sion',7.36,46.23,1100,'town'),('IN','Interlaken',7.86,46.69,1200,'town'),('NE','Neuenburg',6.93,46.99,1100,'town'),
 ('WI','Winterthur',8.73,47.50,1200,'town'),('ZE','Zermatt',7.75,46.02,900,'alp'),('DA','Davos',9.83,46.80,900,'alp'),('BZ','Bellinzona',9.02,46.19,1000,'town'),('SH','Schaffhausen',8.63,47.70,1000,'town'),('FR','Freiburg',7.16,46.80,1100,'town'),
-('SM','St. Moritz',9.84,46.50,900,'alp'),('AN','Andermatt',8.59,46.63,700,'alp'),('BR','Brig',7.99,46.32,900,'town'),('LO','Locarno',8.80,46.17,1000,'town'),('BI','Biel',7.25,47.14,1200,'town'),('TH','Thun',7.63,46.76,1200,'town'),
+('SM','St. Moritz',9.84,46.50,900,'alp'),('AN','Andermatt',8.59,46.63,700,'alp'),('BR','Brig',7.99,46.32,900,'town'),('LO','Locarno',8.80,46.17,1000,'town'),('BI','Biel',7.25,47.14,2000,'town'),('NI','Nidau',7.241,47.125,700,'village'),('PO','Port',7.254,47.115,800,'village'),('TH','Thun',7.63,46.76,1200,'town'),
 ('OL','Olten',7.90,47.35,1000,'town'),('MO','Montreux',6.91,46.43,1000,'town'),('MA','Martigny',7.07,46.10,900,'town')]
 rank={'city':0,'town':1,'village':2}
 nodes=[]

@@ -622,13 +622,13 @@ print('regions total', round(tot / 1e6, 1), 'MB', round(time.time() - t0), 's')
 if not ONLY:
     pl = []
     for p in places:
-        la = math.radians(p['lat']); kx = 111412.84 * math.cos(la) - 93.5 * math.cos(3 * la); kz = 111132.92 - 559.82 * math.cos(2 * la); half = p['r'] + 170
         h = hubinfo.get(p['id'], [wx(p['lon']), wz(p['lat']), 0, wx(p['lon']) + 6, wz(p['lat']) + 6, 0])
         pl.append(dict(id=p['id'], name=p['name'], kind=p['kind'], lu=p['lu'], r=p['r'], x=round(wx(p['lon']), 1), z=round(wz(p['lat']), 1), hub=h,
-                       img=[round(wx(p['lon'] - half / kx)), round(wz(p['lat'] + half / kz)), round(wx(p['lon'] + half / kx)), round(wz(p['lat'] - half / kz))]))
+                       img=[int(v) for v in img_rect(p)]))
     json.dump(pl, open(OUT + 'w/places.json', 'w'), ensure_ascii=False, separators=(',', ':'))
     nd = json.load(open('../data/natdem.json'))
     lus = sorted([int(v) for v in os.path.basename(f)[2:-4].split('_')] for f in glob.glob(OUT + 'w/l_*.jpg'))
     n12 = sorted([int(v) for v in os.path.basename(f)[2:-4].split('_')] for f in glob.glob(OUT + 'w/n_*.jpg'))
-    json.dump(dict(regions=regout, nat=[[a, b] for a, b, _ in natfiles], lu=lus, n12=n12, dem=nd, tunnels=portals), open(OUT + 'w/index.json', 'w'), ensure_ascii=False, separators=(',', ':'))
+    hi = sorted([int(v) for v in os.path.basename(f)[2:-4].split('_')] for f in glob.glob(OUT + 'z/h_*.jpg'))
+    json.dump(dict(regions=regout, nat=[[a, b] for a, b, _ in natfiles], lu=lus, n12=n12, hi=hi, dem=nd, tunnels=portals), open(OUT + 'w/index.json', 'w'), ensure_ascii=False, separators=(',', ':'))
     print('index written', len(portals), 'tunnels', len(lus), 'lu tiles', len(n12), 'n12 tiles')

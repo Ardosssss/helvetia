@@ -176,7 +176,7 @@ async function buildRegion(R, d, b3) {
   const towns = PLACES.filter(p => p.kind !== 'village' && p.x > x0 - 2500 && p.x < x0 + REG + 2500 && p.z > z0 - 2500 && p.z < z0 + REG + 2500);
   R.set = makeRoadSet(d.roads, d.names, x0, z0, towns.length ? (x, z) => towns.some(p => Math.hypot(x - p.x, z - p.z) < p.r + 250) : null); R.far.push(...R.set.far); await tick();
   /* Gebaeude */
-  const CH = 400, chunks = new Map(), patches = IMGS.filter(im => im.pr === 3 && im.x0 < x0 + REG && im.x1 > x0 && im.z0 < z0 + REG && im.z1 > z0); R.patches = patches; if (b3) b3Init(R, b3);
+  const CH = 400, chunks = new Map(), patches = IMGS.filter(im => im.pr === 3 && im.x0 < x0 + REG && im.x1 > x0 && im.z0 < z0 + REG && im.z1 > z0); R.patches = patches; R.hi = IMGS.filter(im => im.pr === 4 && im.x0 < x0 + REG && im.x1 > x0 && im.z0 < z0 + REG && im.z1 > z0); if (b3) b3Init(R, b3);
   const chunk = (x, z) => { const k = Math.floor(x / CH) + ',' + Math.floor(z / CH); let c = chunks.get(k); if (!c) chunks.set(k, c = { w: [0, 1, 2, 3, 4, 5].map(() => ({ pos: [], nor: [], uv: [], col: [], idx: [] })), gf: { pos: [], nor: [], uv: [], col: [], idx: [] }, r: { pos: [], nor: [], col: [] }, rt: { pos: [], nor: [], col: [], uv: [] }, rp: new Map(), x: (Math.floor(x / CH) + .5) * CH + x0, z: (Math.floor(z / CH) + .5) * CH + z0 }); return c; };
   let Rf, Rt, Rp, Pim, rc, tux = 1, tuz = 0;
   const tri = (ax, ay, az, bx, by, bz, cx, cy, cz, c, tile) => { const ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx - ax, vy = cy - ay, vz = cz - az; let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz); if (l < 1e-6) return; nx /= l; ny /= l; nz /= l;
@@ -267,8 +267,9 @@ function b3Build(R, C, lod) {
     let sh = gr ? clamp(gmin - gr, -5, 5) : 0; if (ymin + sh < gmin + 2.1) sh = gmin + 2.1 - ymin;
     if (sh) { for (let i = 0; i < nV; i++) B3Y[i] += sh; ymin += sh; }
     const hs = h2(U[p0 + 6], U[p0 + 8]), wc = WALLC[ty][hs * WALLC[ty].length | 0], sd = (.9 + h2(U[p0 + 8], U[p0 + 6]) * .16) * 255, cr = Math.min(255, wc[0] * sd) | 0, cg = Math.min(255, wc[1] * sd) | 0, cb = Math.min(255, wc[2] * sd) | 0;
-    let rr, rg, rb; if (bc >= 4096) { _col.setRGB(Math.min(1, ((bc >> 8 & 15) / 15) * 1.12 + .03), Math.min(1, ((bc >> 4 & 15) / 15) * 1.12 + .03), Math.min(1, ((bc & 15) / 15) * 1.12 + .03), THREE.SRGBColorSpace); rr = _col.r * 255 | 0; rg = _col.g * 255 | 0; rb = _col.b * 255 | 0; } else { const pal = ty === 3 ? ROOFC.metal : ty === 4 ? ROOFC.old : ty === 0 || ty === 5 ? ROOFC.tile : ROOFC.flat, q = pal[h2(U[p0 + 6] + 7, U[p0 + 8]) * pal.length | 0]; rr = q[0] * 255 | 0; rg = q[1] * 255 | 0; rb = q[2] * 255 | 0; }
-    let Pim = null, Rp = null; for (const im of R.patches) if (im.x0 <= xa + x0 - 1 && im.x1 >= xb + x0 + 1 && im.z0 <= za + z0 - 1 && im.z1 >= zb + z0 + 1) { Pim = im; break; }
+    let rr, rg, rb; if (bc >= 4096) { /* gemessene Dachfarbe: etwas kraeftiger und dunkler, weil die Sonne im Spiel die Dachflaeche zusaetzlich aufhellt */ const q0 = (bc >> 8 & 15) / 15, q1 = (bc >> 4 & 15) / 15, q2 = (bc & 15) / 15, qm = (q0 + q1 + q2) / 3; _col.setRGB(clamp((qm + (q0 - qm) * 1.3) * .9, 0, 1), clamp((qm + (q1 - qm) * 1.3) * .9, 0, 1), clamp((qm + (q2 - qm) * 1.3) * .9, 0, 1), THREE.SRGBColorSpace); rr = _col.r * 255 | 0; rg = _col.g * 255 | 0; rb = _col.b * 255 | 0; } else { const pal = ty === 3 ? ROOFC.metal : ty === 4 ? ROOFC.old : ty === 0 || ty === 5 ? ROOFC.tile : ROOFC.flat, q = pal[h2(U[p0 + 6] + 7, U[p0 + 8]) * pal.length | 0]; rr = q[0] * 255 | 0; rg = q[1] * 255 | 0; rb = q[2] * 255 | 0; }
+    let Pim = null, Rp = null; if (full) for (const im of R.hi) if (im.state === 'ready' && im.x0 <= xa + x0 && im.x1 >= xb + x0 && im.z0 <= za + z0 && im.z1 >= zb + z0) { Pim = im; break; }
+    if (!Pim) for (const im of R.patches) if (im.x0 <= xa + x0 - 1 && im.x1 >= xb + x0 + 1 && im.z0 <= za + z0 - 1 && im.z1 >= zb + z0 + 1) { Pim = im; break; }
     if (Pim) { Rp = RP.get(Pim); if (!Rp) RP.set(Pim, Rp = mk(1, 0, 0)); }
     /* Dachflaechen */
     for (let i = 0; i < nT; i++) { const a = U[t0 + i * 3]; let b = U[t0 + i * 3 + 1], c = U[t0 + i * 3 + 2];
@@ -309,6 +310,7 @@ function b3Build(R, C, lod) {
   W.forEach((o, ty) => add(o, zFac[ty])); add(G, zGround); add(Rf, zRoofMat); add(Rt, zTileMat); for (const [im, o] of RP) add(o, roofMatOf(im));
   if (old) { for (const m of old) { R.g.remove(m); m.geometry.dispose(); } const dead = new Set(old); R.far = R.far.filter(m => !dead.has(m)); }
 }
+function b3Dirty(im) { for (const R of regions.values()) if (R.b3 && R.state === 'ready') for (const C of R.b3.ch) if (C.lod === 2 && C.x > im.x0 - 250 && C.x < im.x1 + 250 && C.z > im.z0 - 250 && C.z < im.z1 + 250) C.lod = 1; }
 const _b3q = [];
 function updB3(px, pz, lim, sync) { const rb = sync ? sync : lim + 520; _b3q.length = 0;
   for (const R of regions.values()) { if (R.state !== 'ready' || !R.b3) continue; if (Math.hypot(clamp(px, R.x0, R.x0 + REG) - px, clamp(pz, R.z0, R.z0 + REG) - pz) > rb + 900) { if (!sync) for (const C of R.b3.ch) if (C.ms) b3Free(R, C); continue; }

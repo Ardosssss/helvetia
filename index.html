@@ -484,7 +484,7 @@ function collide(x, z, r, y) { hit.on = false; const cx = Math.floor(x / 24), cz
 function obb(xs, zs, n) { let best = null; for (let i = 0; i < n; i++) { const j = (i + 1) % n; let dx = xs[j] - xs[i], dz = zs[j] - zs[i]; const l = Math.hypot(dx, dz); if (l < .5) continue; dx /= l; dz /= l; let u0 = 1e18, u1 = -1e18, v0 = 1e18, v1 = -1e18; for (let k = 0; k < n; k++) { const u = xs[k] * dx + zs[k] * dz, v = -xs[k] * dz + zs[k] * dx; if (u < u0) u0 = u; if (u > u1) u1 = u; if (v < v0) v0 = v; if (v > v1) v1 = v; } const A = (u1 - u0) * (v1 - v0); if (!best || A < best.A) best = { A, dx, dz, u0, u1, v0, v1 }; }
   if (!best) return null; let { dx, dz, u0, u1, v0, v1 } = best, a = (u1 - u0) / 2, b = (v1 - v0) / 2; const uc = (u0 + u1) / 2, vc = (v0 + v1) / 2, cx = uc * dx - vc * dz, cz = uc * dz + vc * dx; if (b > a) { const t = a; a = b; b = t; const ndx = -dz, ndz = dx; dx = ndx; dz = ndz; } return { A: best.A, ux: dx, uz: dz, cx, cz, a, b }; }
 const tick = () => new Promise(r => setTimeout(r, 0));
-async function buildRegion(R, d) {
+async function buildRegion(R, d, b3) {
   const x0 = R.x0, z0 = R.z0, r = rng32(R.ix * 7919 + R.iz * 104729 | 0); R.g.position.set(x0, 0, z0); R.far = []; R.segs = new Map(); R.segArr = []; R.parked = [];
   R.dem = decodeDem(d.dem);
   /* Wasser: Maske fuer Schwimmen/Sperren, Gelaende darunter absenken */
@@ -499,7 +499,7 @@ async function buildRegion(R, d) {
   const towns = PLACES.filter(p => p.kind !== 'village' && p.x > x0 - 2500 && p.x < x0 + REG + 2500 && p.z > z0 - 2500 && p.z < z0 + REG + 2500);
   R.set = makeRoadSet(d.roads, d.names, x0, z0, towns.length ? (x, z) => towns.some(p => Math.hypot(x - p.x, z - p.z) < p.r + 250) : null); R.far.push(...R.set.far); await tick();
   /* Gebaeude */
-  const CH = 400, chunks = new Map(), patches = IMGS.filter(im => im.pr === 3 && im.x0 < x0 + REG && im.x1 > x0 && im.z0 < z0 + REG && im.z1 > z0);
+  const CH = 400, chunks = new Map(), patches = IMGS.filter(im => im.pr === 3 && im.x0 < x0 + REG && im.x1 > x0 && im.z0 < z0 + REG && im.z1 > z0); R.patches = patches; if (b3) b3Init(R, b3);
   const chunk = (x, z) => { const k = Math.floor(x / CH) + ',' + Math.floor(z / CH); let c = chunks.get(k); if (!c) chunks.set(k, c = { w: [0, 1, 2, 3, 4, 5].map(() => ({ pos: [], nor: [], uv: [], col: [], idx: [] })), gf: { pos: [], nor: [], uv: [], col: [], idx: [] }, r: { pos: [], nor: [], col: [] }, rt: { pos: [], nor: [], col: [], uv: [] }, rp: new Map(), x: (Math.floor(x / CH) + .5) * CH + x0, z: (Math.floor(z / CH) + .5) * CH + z0 }); return c; };
   let Rf, Rt, Rp, Pim, rc, tux = 1, tuz = 0;
   const tri = (ax, ay, az, bx, by, bz, cx, cy, cz, c, tile) => { const ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx - ax, vy = cy - ay, vz = cz - az; let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz); if (l < 1e-6) return; nx /= l; ny /= l; nz /= l;
@@ -563,16 +563,95 @@ async function buildRegion(R, d) {
     if (R.parked.some(q => Math.hypot(q.x - x, q.z - z) < 7) || collide(x, z, 1.4, H(x, z) + 1)) continue; const q = r(); R.parked.push({ x, z, a: Math.atan2(t.tx * side, t.tz * side), kind: q < .5 ? 'sedan' : q < .74 ? 'suv' : q < .9 ? 'sport' : q < .97 ? 'bus' : 'tractor', paint: r() * 8 | 0 }); }
   scene.add(R.g); R.state = 'ready'; dirtyRect(x0 - 30, z0 - 30, x0 + REG + 30, z0 + REG + 30, 1);
 }
+/* ---------- echte Dachformen (swisstopo swissBUILDINGS3D): Dach aus Messdaten, Waende von den Dachkanten bis zum Boden.
+   Je Region eine Binaerdatei; die 400-m-Chunks werden erst in der Naehe des Spielers gebaut und danach wieder freigegeben. */
+const regB3 = new Set(), B3X = new Float32Array(65536), B3Y = new Float32Array(65536), B3Z = new Float32Array(65536);
+async function inflate(buf) { return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer(); }
+function b3Init(R, buf) { const h = new Uint32Array(buf, 0, 2); if (h[0] !== 0x31443342) return; const nC = h[1], dir = new Uint32Array(buf, 8, nC * 4), U = new Uint16Array(buf, 8 + nC * 16), ch = [];
+  for (let i = 0; i < nC; i++) ch.push({ x: ((dir[i * 4] & 255) + .5) * 400 + R.x0, z: ((dir[i * 4] >> 8) + .5) * 400 + R.z0, n: dir[i * 4 + 1], off: dir[i * 4 + 2], ms: null, lod: 0, seg: false }); R.b3 = { U, ch }; }
+function b3Free(R, C) { if (!C.ms) return; for (const m of C.ms) { R.g.remove(m); m.geometry.dispose(); } const dead = new Set(C.ms); R.far = R.far.filter(m => !dead.has(m)); C.ms = null; C.lod = 0; }
+function b3Build(R, C, lod) {
+  const U = R.b3.U, x0 = R.x0, z0 = R.z0, full = lod === 2, old = C.ms;
+  const mk = (uv, col, idx) => ({ pos: [], nor: [], uv: uv ? [] : null, col: col ? [] : null, idx: idx ? [] : null });
+  const W = [0, 1, 2, 3, 4, 5].map(() => mk(1, 1, 1)), G = mk(1, 1, 1), Rf = mk(0, 1, 0), Rt = mk(1, 1, 0), RP = new Map();
+  const quad = (o, ax, az, bx, bz, a0, b0, a1, b1, nx, nz, u0, u1, va0, vb0, va1, vb1, r, g, b) => { const k = o.pos.length / 3; o.pos.push(ax, a0, az, bx, b0, bz, bx, b1, bz, ax, a1, az); o.nor.push(nx, 0, nz, nx, 0, nz, nx, 0, nz, nx, 0, nz); o.uv.push(u0, va0, u1, vb0, u1, vb1, u0, va1); o.col.push(r, g, b, r, g, b, r, g, b, r, g, b); o.idx.push(k, k + 1, k + 2, k, k + 2, k + 3); };
+  const flatq = (ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, nx, nz, r, g, b) => { Rf.pos.push(ax, ay, az, bx, by, bz, cx, cy, cz, ax, ay, az, cx, cy, cz, dx, dy, dz); for (let i = 0; i < 6; i++) { Rf.nor.push(nx, 0, nz); Rf.col.push(r, g, b); } };
+  let p = C.off;
+  for (let bi = 0; bi < C.n; bi++) {
+    const p0 = p, ty = U[p] & 7, fl = U[p] >> 8, bc = U[p + 1], nV = U[p + 2], nT = U[p + 3], nE = U[p + 4], nI = U[p + 5], bx = (U[p + 6] + U[p + 7] * 65536 - 100000) / 10, bz = (U[p + 8] + U[p + 9] * 65536 - 100000) / 10, by = U[p + 10] / 10, gr = U[p + 11] / 10;
+    const v0 = p + 12, t0 = v0 + nV * 3, e0 = t0 + nT * 3, i0 = e0 + nE * 2; p = i0 + nI * 2;
+    let ymin = 1e9, xa = 1e9, xb = -1e9, za = 1e9, zb = -1e9;
+    for (let i = 0; i < nV; i++) { const x = B3X[i] = bx + U[v0 + i * 3] / 10, y = B3Y[i] = by + U[v0 + i * 3 + 1] / 10, z = B3Z[i] = bz + U[v0 + i * 3 + 2] / 10; if (y < ymin) ymin = y; if (x < xa) xa = x; if (x > xb) xb = x; if (z < za) za = z; if (z > zb) zb = z; }
+    if (coarse && (xb - xa) * (zb - za) < 22) continue;
+    /* Boden im Spiel: das Gebaeude wird so gesetzt, dass es gleich hoch ueber dem Gelaende steht wie in echt */
+    const cx = (xa + xb) / 2, cz = (za + zb) / 2, gc = H(cx + x0, cz + z0); let gmin = 1e9;
+    for (let i = 0; i < nE; i += nE > 10 ? 2 : 1) { const a = U[e0 + i * 2], g = H(B3X[a] + x0, B3Z[a] + z0); if (g < gmin) gmin = g; }
+    if (gmin > 1e8) gmin = gc; const gav = Math.max(gmin, gc);
+    let sh = gr ? clamp(gmin - gr, -5, 5) : 0; if (ymin + sh < gmin + 2.1) sh = gmin + 2.1 - ymin;
+    if (sh) { for (let i = 0; i < nV; i++) B3Y[i] += sh; ymin += sh; }
+    const hs = h2(U[p0 + 6], U[p0 + 8]), wc = WALLC[ty][hs * WALLC[ty].length | 0], sd = (.9 + h2(U[p0 + 8], U[p0 + 6]) * .16) * 255, cr = Math.min(255, wc[0] * sd) | 0, cg = Math.min(255, wc[1] * sd) | 0, cb = Math.min(255, wc[2] * sd) | 0;
+    let rr, rg, rb; if (bc >= 4096) { _col.setRGB(Math.min(1, ((bc >> 8 & 15) / 15) * 1.12 + .03), Math.min(1, ((bc >> 4 & 15) / 15) * 1.12 + .03), Math.min(1, ((bc & 15) / 15) * 1.12 + .03), THREE.SRGBColorSpace); rr = _col.r * 255 | 0; rg = _col.g * 255 | 0; rb = _col.b * 255 | 0; } else { const pal = ty === 3 ? ROOFC.metal : ty === 4 ? ROOFC.old : ty === 0 || ty === 5 ? ROOFC.tile : ROOFC.flat, q = pal[h2(U[p0 + 6] + 7, U[p0 + 8]) * pal.length | 0]; rr = q[0] * 255 | 0; rg = q[1] * 255 | 0; rb = q[2] * 255 | 0; }
+    let Pim = null, Rp = null; for (const im of R.patches) if (im.x0 <= xa + x0 - 1 && im.x1 >= xb + x0 + 1 && im.z0 <= za + z0 - 1 && im.z1 >= zb + z0 + 1) { Pim = im; break; }
+    if (Pim) { Rp = RP.get(Pim); if (!Rp) RP.set(Pim, Rp = mk(1, 0, 0)); }
+    /* Dachflaechen */
+    for (let i = 0; i < nT; i++) { const a = U[t0 + i * 3]; let b = U[t0 + i * 3 + 1], c = U[t0 + i * 3 + 2];
+      const ax = B3X[a], ay = B3Y[a], az = B3Z[a]; let ux = B3X[b] - ax, uy = B3Y[b] - ay, uz = B3Z[b] - az, vx = B3X[c] - ax, vy = B3Y[c] - ay, vz = B3Z[c] - az, nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz); if (l < 1e-5) continue; nx /= l; ny /= l; nz /= l;
+      if (ny < 0) { const t = b; b = c; c = t; nx = -nx; ny = -ny; nz = -nz; }
+      const qx = B3X[b], qy = B3Y[b], qz = B3Z[b], sx = B3X[c], sy = B3Y[c], sz = B3Z[c], o = ny >= .97 ? (Rp || Rf) : ny < .2 ? Rf : Rt, n1 = nx * 127 | 0, n2 = ny * 127 | 0, n3 = nz * 127 | 0;
+      o.pos.push(ax, ay, az, qx, qy, qz, sx, sy, sz); o.nor.push(n1, n2, n3, n1, n2, n3, n1, n2, n3);
+      if (o === Rt) { const hl = Math.hypot(nx, nz), tx = -nz / hl / 1.1, tz = nx / hl / 1.1, vs = 1 / (.73 * hl); o.uv.push((ax - bx) * tx + (az - bz) * tz, (ay - by) * vs, (qx - bx) * tx + (qz - bz) * tz, (qy - by) * vs, (sx - bx) * tx + (sz - bz) * tz, (sy - by) * vs); o.col.push(rr, rg, rb, rr, rg, rb, rr, rg, rb); }
+      else if (o === Rp) { const ku = 1 / (Pim.x1 - Pim.x0), kv = 1 / (Pim.z1 - Pim.z0), ou = x0 - Pim.x0, ov = z0 - Pim.z0; o.uv.push((ax + ou) * ku, 1 - (az + ov) * kv, (qx + ou) * ku, 1 - (qz + ov) * kv, (sx + ou) * ku, 1 - (sz + ov) * kv); }
+      else if (ny < .2) o.col.push(cr, cg, cb, cr, cg, cb, cr, cg, cb); else o.col.push(rr, rg, rb, rr, rg, rb, rr, rg, rb); }
+    if (fl & 1) { /* offene Bauten: Stuetzen statt Waende */
+      const bot = gmin - .3, st = Math.max(1, Math.ceil(nE / 8)), w = .13;
+      for (let i = 0; i < nE; i += st) { const a = U[e0 + i * 2], x = B3X[a] + (cx - B3X[a]) * .04, z = B3Z[a] + (cz - B3Z[a]) * .04, t = B3Y[a] - .04; if (t - bot < 1) continue;
+        flatq(x - w, bot, z - w, x + w, bot, z - w, x + w, t, z - w, x - w, t, z - w, 0, -127, 105, 108, 110); flatq(x + w, bot, z + w, x - w, bot, z + w, x - w, t, z + w, x + w, t, z + w, 0, 127, 105, 108, 110);
+        flatq(x - w, bot, z + w, x - w, bot, z - w, x - w, t, z - w, x - w, t, z + w, -127, 0, 95, 98, 100); flatq(x + w, bot, z - w, x + w, bot, z + w, x + w, t, z + w, x + w, t, z - w, 127, 0, 95, 98, 100); }
+      continue; }
+    /* Aussenwaende: Erdgeschoss + Obergeschosse, oben schraeg der Dachkante folgend */
+    const bot = gmin - .5, gfTop = gav + 3.1, vg0 = (ty + .03) / 6, vg1 = (ty + .97) / 6, Wl = W[ty];
+    for (let i = 0; i < nE; i++) { const a = U[e0 + i * 2], b = U[e0 + i * 2 + 1], ax = B3X[a], az = B3Z[a], qx = B3X[b], qz = B3Z[b], dx = qx - ax, dz = qz - az, len = Math.hypot(dx, dz); if (len < .05) continue;
+      const nx = -dz / len * 127 | 0, nz = dx / len * 127 | 0, nb = len < 2 ? 0 : Math.max(1, Math.round(len / 3.4)), u1 = nb ? nb / 2 : .02, ya = B3Y[a], yb = B3Y[b], hi = Math.max(ya, yb), lev = Math.abs(ya - yb) < .25;
+      if (hi <= bot + .2) continue;
+      const up = (lo, A, Bq) => { if (!nb || hi - lo < 2.4) return [.02, .02]; if (lev) { const f = Math.max(1, Math.round((hi - lo) / 3.1)) / 2; return [f, f]; } return [Math.max(0, A - lo) / 6.2, Math.max(0, Bq - lo) / 6.2]; };
+      if (full && hi - gav >= 4.3) { const ga = Math.min(ya, gfTop), gb = Math.min(yb, gfTop), ua = h2(U[p0 + 6] + i, U[p0 + 8]) < .5 ? 0 : .5, k = (vg1 - vg0) / (gfTop - bot);
+        quad(G, ax, az, qx, qz, bot, bot, ga, gb, nx, nz, ua, ua + u1, vg0, vg0, vg0 + (ga - bot) * k, vg0 + (gb - bot) * k, cr, cg, cb);
+        if (ya > gfTop + .05 || yb > gfTop + .05) { const v = up(gfTop, ya, yb); quad(Wl, ax, az, qx, qz, ga, gb, ya, yb, nx, nz, 0, u1, 0, 0, v[0], v[1], cr, cg, cb); } }
+      else if (full) { const ua = h2(U[p0 + 6] + i, U[p0 + 8]) < .5 ? 0 : .5, k = (vg1 - vg0) / Math.max(3.3, hi - bot); quad(G, ax, az, qx, qz, bot, bot, ya, yb, nx, nz, ua, ua + u1, vg0, vg0, vg0 + Math.max(0, ya - bot) * k, vg0 + Math.max(0, yb - bot) * k, cr, cg, cb); }
+      else { const v = up(bot, ya, yb); quad(Wl, ax, az, qx, qz, bot, bot, ya, yb, nx, nz, 0, u1, 0, 0, v[0], v[1], cr, cg, cb); }
+      if (!C.seg) regSeg(R, ax + x0, az + z0, qx + x0, qz + z0, hi); }
+    /* Waende an Dachstufen (hoeherer Gebaeudeteil ueber tieferem Dach) */
+    const ib = Math.max(bot, ymin - .3);
+    for (let i = 0; i < nI; i++) { const a = U[i0 + i * 2], b = U[i0 + i * 2 + 1], ax = B3X[a], az = B3Z[a], qx = B3X[b], qz = B3Z[b], dx = qx - ax, dz = qz - az, len = Math.hypot(dx, dz); if (len < .05) continue; const ya = B3Y[a], yb = B3Y[b]; if (Math.max(ya, yb) - ib < .25) continue;
+      const tall = len >= 3 && Math.min(ya, yb) - ib > 6, u1 = tall ? Math.max(1, Math.round(len / 3.4)) / 2 : .02; quad(Wl, ax, az, qx, qz, ib, ib, ya, yb, -dz / len * 127 | 0, dx / len * 127 | 0, 0, u1, 0, 0, tall ? (ya - ib) / 6.2 : .02, tall ? (yb - ib) / 6.2 : .02, cr, cg, cb); }
+  }
+  C.seg = true; C.ms = []; C.lod = lod;
+  const add = (o, mat) => { if (!o.pos.length) return; const g = new THREE.BufferGeometry(), drop = function () { this.array = null; };
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(o.pos), 3)); g.setAttribute('normal', new THREE.BufferAttribute(new Int8Array(o.nor), 3, true)); if (o.col) g.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(o.col), 3, true)); if (o.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(o.uv), 2)); if (o.idx) g.setIndex(o.idx);
+    g.computeBoundingSphere(); for (const k in g.attributes) g.attributes[k].onUpload(drop); const m = new THREE.Mesh(g, mat); m.castShadow = m.receiveShadow = true; m.userData.c = C; R.g.add(m); R.far.push(m); C.ms.push(m); };
+  W.forEach((o, ty) => add(o, zFac[ty])); add(G, zGround); add(Rf, zRoofMat); add(Rt, zTileMat); for (const [im, o] of RP) add(o, roofMatOf(im));
+  if (old) { for (const m of old) { R.g.remove(m); m.geometry.dispose(); } const dead = new Set(old); R.far = R.far.filter(m => !dead.has(m)); }
+}
+const _b3q = [];
+function updB3(px, pz, lim, sync) { const rb = sync ? sync : lim + 520; _b3q.length = 0;
+  for (const R of regions.values()) { if (R.state !== 'ready' || !R.b3) continue; if (Math.hypot(clamp(px, R.x0, R.x0 + REG) - px, clamp(pz, R.z0, R.z0 + REG) - pz) > rb + 900) { if (!sync) for (const C of R.b3.ch) if (C.ms) b3Free(R, C); continue; }
+    for (const C of R.b3.ch) { const d = Math.hypot(C.x - px, C.z - pz), want = d < rb ? (d < 760 ? 2 : 1) : 0;
+      if (!want) { if (C.ms && !sync && d > rb + 320) b3Free(R, C); continue; }
+      if (C.lod === want || (C.lod === 2 && d < 930)) continue; _b3q.push([d - (C.lod ? 0 : 600), R, C, want]); } }
+  if (!_b3q.length) return 0; _b3q.sort((a, b) => a[0] - b[0]); const t0 = performance.now(); let n = 0;
+  for (const q of _b3q) { b3Build(q[1], q[2], q[3]); n++; if (!sync && performance.now() - t0 > 7) break; }
+  return _b3q.length - n; }
 function freeRegion(R) { R.dead = true; regions.delete(RK(R.ix, R.iz)); _lr = null; scene.remove(R.g); R.g.traverse(o => { if (o.geometry && o.geometry !== zFirGeo && o.geometry !== zLeafGeo) o.geometry.dispose(); }); if (R.set) freeRoadSet(R.set); dirtyRect(R.x0 - 30, R.z0 - 30, R.x0 + REG + 30, R.z0 + REG + 30, 1); if (typeof onRegionGone === 'function') onRegionGone(R); }
 let regIndex = new Set(), regBusy = 0;
 function loadRegion(ix, iz) { const k = RK(ix, iz); if (regions.has(k) || !regIndex.has(k)) return regions.get(k) || null;
   const R = { ix, iz, x0: ix * REG, z0: iz * REG, state: 'loading', g: new THREE.Group(), hc: null, dem: null, wm: null, set: null, far: [], parked: [], spawned: false }; regions.set(k, R); regBusy++;
-  R.promise = getJSON('r/' + ix + '_' + iz + '.json').then(d => buildRegion(R, d)).catch(e => { console.error(e); R.state = 'failed'; }).finally(() => { regBusy--; if (R.state === 'ready' && typeof onRegionReady === 'function') onRegionReady(R); });
+  const b3 = regB3.has(k) && typeof DecompressionStream === 'function' ? fetch('r/' + ix + '_' + iz + '.b3z').then(r => r.ok ? r.arrayBuffer() : null).then(b => b && inflate(b)).catch(e => { console.error(e); return null; }) : null;
+  R.promise = Promise.all([getJSON('r/' + ix + '_' + iz + '.json'), b3]).then(q => buildRegion(R, q[0], q[1])).catch(e => { console.error(e); R.state = 'failed'; }).finally(() => { regBusy--; if (R.state === 'ready' && typeof onRegionReady === 'function') onRegionReady(R); });
   return R; }
 function updRegions(px, pz) { const near = 3200, far = 6500;
   for (let ix = Math.floor((px - near) / REG); ix <= Math.floor((px + near) / REG); ix++) for (let iz = Math.floor((pz - near) / REG); iz <= Math.floor((pz + near) / REG); iz++) if (regBusy < 2) loadRegion(ix, iz);
   for (const R of regions.values()) { if (R.state === 'loading') continue; const d = Math.hypot(clamp(px, R.x0, R.x0 + REG) - px, clamp(pz, R.z0, R.z0 + REG) - pz); if (d > far && !chars.some(c => Math.hypot(clamp(c.x, R.x0, R.x0 + REG) - c.x, clamp(c.z, R.z0, R.z0 + REG) - c.z) < 1500)) freeRegion(R); } }
-async function ensureRegions(x, z) { const ps = []; for (let ix = Math.floor((x - 900) / REG); ix <= Math.floor((x + 900) / REG); ix++) for (let iz = Math.floor((z - 900) / REG); iz <= Math.floor((z + 900) / REG); iz++) { const R = loadRegion(ix, iz); if (R && R.promise) ps.push(R.promise); } await Promise.all(ps); }
+async function ensureRegions(x, z) { const ps = []; for (let ix = Math.floor((x - 900) / REG); ix <= Math.floor((x + 900) / REG); ix++) for (let iz = Math.floor((z - 900) / REG); iz <= Math.floor((z + 900) / REG); iz++) { const R = loadRegion(ix, iz); if (R && R.promise) ps.push(R.promise); } await Promise.all(ps); updB3(x, z, 0, 620); }
 
 /* ============================================================ Landesstrassen ausserhalb der Detailgebiete, Tunnelportale */
 const natTiles = new Map(), NT = 51200, NC = 3200; let natIndex = new Set();
@@ -958,6 +1037,7 @@ function setShadows(on) { sun.castShadow = on; renderer.shadowMap.enabled = on; 
 function stream(px, pz, py) {
   updRegions(px, pz); updNatRoads(px, pz); updPortalMeshes(px, pz); pumpImages();
   const lim = VIEW + Math.max(0, py - H(px, pz) - 40) * 3;
+  updB3(px, pz, Math.min(lim, VIEW + 1500));
   for (const R of regions.values()) if (R.state === 'ready') for (const m of R.far) { const c = m.userData.c; m.visible = Math.hypot(c.x - px, c.z - pz) < lim + 420; }
   for (const T of natTiles.values()) for (const S of T.sets.values()) for (const m of S.far) { const c = m.userData.c; m.visible = Math.hypot(c.x - px, c.z - pz) < lim + 900; }
   for (const v of vehicles) v.g.visible = Math.hypot(v.x - px, v.z - pz) < lim;
@@ -1011,7 +1091,7 @@ async function boot(hot) {
     for (const [i, j] of index.lu) addImg(i * 25600, j * 25600, (i + 1) * 25600, (j + 1) * 25600, 'w/l_' + i + '_' + j + '.jpg', 1, 2, .4);
     initPlaces(places);
     await say('Lade Höhenmodell …'); await loadDEM(index.dem);
-    regIndex = new Set(index.regions.map(q => RK(q[0], q[1]))); natIndex = new Set(index.nat.map(q => q[0] + '_' + q[1])); initPortals(index.tunnels);
+    regIndex = new Set(index.regions.map(q => RK(q[0], q[1]))); for (const q of index.regions) if (q[2]) regB3.add(RK(q[0], q[1])); natIndex = new Set(index.nat.map(q => q[0] + '_' + q[1])); initPortals(index.tunnels);
     buildClouds(); buildLabels();
     const sv = (hot && hot.chars) ? hot : loadSave();
     buildChars(sv); buildTraffic(); buildPeds(); buildMarkers(); buildGarageUI(); setShadows(shadowsOK);

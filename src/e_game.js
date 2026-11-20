@@ -165,6 +165,7 @@ function setShadows(on) { sun.castShadow = on; renderer.shadowMap.enabled = on; 
 function stream(px, pz, py) {
   updRegions(px, pz); updNatRoads(px, pz); updPortalMeshes(px, pz); pumpImages();
   const lim = VIEW + Math.max(0, py - H(px, pz) - 40) * 3;
+  updB3(px, pz, Math.min(lim, VIEW + 1500));
   for (const R of regions.values()) if (R.state === 'ready') for (const m of R.far) { const c = m.userData.c; m.visible = Math.hypot(c.x - px, c.z - pz) < lim + 420; }
   for (const T of natTiles.values()) for (const S of T.sets.values()) for (const m of S.far) { const c = m.userData.c; m.visible = Math.hypot(c.x - px, c.z - pz) < lim + 900; }
   for (const v of vehicles) v.g.visible = Math.hypot(v.x - px, v.z - pz) < lim;
@@ -218,7 +219,7 @@ async function boot(hot) {
     for (const [i, j] of index.lu) addImg(i * 25600, j * 25600, (i + 1) * 25600, (j + 1) * 25600, 'w/l_' + i + '_' + j + '.jpg', 1, 2, .4);
     initPlaces(places);
     await say('Lade Höhenmodell …'); await loadDEM(index.dem);
-    regIndex = new Set(index.regions.map(q => RK(q[0], q[1]))); natIndex = new Set(index.nat.map(q => q[0] + '_' + q[1])); initPortals(index.tunnels);
+    regIndex = new Set(index.regions.map(q => RK(q[0], q[1]))); for (const q of index.regions) if (q[2]) regB3.add(RK(q[0], q[1])); natIndex = new Set(index.nat.map(q => q[0] + '_' + q[1])); initPortals(index.tunnels);
     buildClouds(); buildLabels();
     const sv = (hot && hot.chars) ? hot : loadSave();
     buildChars(sv); buildTraffic(); buildPeds(); buildMarkers(); buildGarageUI(); setShadows(shadowsOK);

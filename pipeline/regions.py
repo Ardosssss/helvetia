@@ -222,6 +222,77 @@ def on_node(o):
     if t.get('railway') in ('station', 'halt') and t.get('station') != 'subway': kind = 'bahn'
     elif "jet d'eau" in name.lower(): kind = 'jet'
     if kind: R[k]['poi'].append((name, kind, x, z))
+# ------------------------------------------------------------------ swissBUILDINGS3D: echte Dachgeometrie
+import zlib
+from pyproj import Transformer
+TR = Transformer.from_crs(2056, 4326, always_xy=True)
+def wall_edges(P, T, fp, inset, ft=None, me=-1):
+    """Randkanten des Dachnetzes -> Wandkanten. Aussen: am Gebaeudeumriss. Innen: nur wo das Nachbardach tiefer liegt.
+    Jede Kante (a, b) ist so gerichtet, dass (-dz, dx) nach aussen zeigt. Bei geneigten Daechern steht die Wand um den
+    Dachvorsprung zurueck: dafuer kommen zusaetzliche Wandpunkte unter der Dachflaeche dazu (dritter Rueckgabewert)."""
+    E = {}
+    for ti, t in enumerate(T):
+        for i in range(3):
+            a, b, c = int(t[i]), int(t[(i + 1) % 3]), int(t[(i + 2) % 3]); key = (a, b) if a < b else (b, a)
+            E[key] = None if key in E else (a, b, c, ti)
+    be = [v for v in E.values() if v is not None]
+    if not be: return [], [], []
+    be = np.array(be); A = P[be[:, 0]]; Bv = P[be[:, 1]]; C = P[be[:, 2]]
+    dx = Bv[:, 0] - A[:, 0]; dz = Bv[:, 2] - A[:, 2]; L = np.hypot(dx, dz); ok = L > .06; be = be[ok]
+    if not len(be): return [], [], []
+    A = A[ok]; Bv = Bv[ok]; C = C[ok]; dx = dx[ok] / L[ok]; dz = dz[ok] / L[ok]; nx = -dz; nz = dx
+    flip = (C[:, 0] - A[:, 0]) * nx + (C[:, 2] - A[:, 2]) * nz > 0
+    nx = np.where(flip, -nx, nx); nz = np.where(flip, -nz, nz); ea = np.where(flip, be[:, 1], be[:, 0]); eb = np.where(flip, be[:, 0], be[:, 1])
+    mx = (A[:, 0] + Bv[:, 0]) / 2; mz = (A[:, 2] + Bv[:, 2]) / 2; my = (A[:, 1] + Bv[:, 1]) / 2
+    outer = shapely.distance(fp.boundary, shapely.points(mx, mz)) < .09
+    keep = np.zeros(len(be), bool)
+    inn = np.nonzero(~outer)[0]
+    if len(inn):
+        qx = mx[inn] + nx[inn] * .09; qz = mz[inn] + nz[inn] * .09
+        p0 = P[T[:, 0]]; p1 = P[T[:, 1]]; p2 = P[T[:, 2]]
+        d = (p1[:, 2] - p2[:, 2]) * (p0[:, 0] - p2[:, 0]) + (p2[:, 0] - p1[:, 0]) * (p0[:, 2] - p2[:, 2]); good = np.abs(d) > 1e-4; d = np.where(good, d, 1)
+        w0 = ((p1[:, 2] - p2[:, 2])[None] * (qx[:, None] - p2[:, 0][None]) + (p2[:, 0] - p1[:, 0])[None] * (qz[:, None] - p2[:, 2][None])) / d[None]
+        w1 = ((p2[:, 2] - p0[:, 2])[None] * (qx[:, None] - p2[:, 0][None]) + (p0[:, 0] - p2[:, 0])[None] * (qz[:, None] - p2[:, 2][None])) / d[None]
+        w2 = 1 - w0 - w1; ins = (w0 >= -1e-3) & (w1 >= -1e-3) & (w2 >= -1e-3) & good[None]
+        hh = np.where(ins, w0 * p0[:, 1][None] + w1 * p1[:, 1][None] + w2 * p2[:, 1][None], -1e9).max(axis=1)
+        keep[inn] = hh < my[inn] - .3
+    oa = ea[outer].copy(); ob = eb[outer].copy(); extra = []
+    if inset > 0 and len(oa):
+        # Ebene des Dachdreiecks an jeder Aussenkante; flache und senkrechte Flaechen haben keinen Vorsprung
+        N = np.cross(Bv - A, C - A)[outer]; nl = np.linalg.norm(N, axis=1); nl[nl == 0] = 1; N = N / nl[:, None]; N[N[:, 1] < 0] *= -1
+        de = np.where((N[:, 1] < .97) & (N[:, 1] > .25), inset, 0.0); onx = nx[outer]; onz = nz[outer]; A0 = A[outer]
+        if ft is not None and de.any():
+            # Brandmauern (Nachbarhaus direkt angebaut): kein Vorsprung, sonst entstehen Spalten zwischen Reihenhaeusern
+            qi, ti = ft.query(shapely.points(mx[outer] + onx * .35, mz[outer] + onz * .35), predicate='within'); de[qi[ti != me]] = 0
+        if de.any():
+            vin = defaultdict(list); vout = defaultdict(list)
+            for e in range(len(oa)): vout[int(oa[e])].append(e); vin[int(ob[e])].append(e)
+            nP = len(P)
+            for v in set(vin) & set(vout):
+                if len(vin[v]) != 1 or len(vout[v]) != 1: continue
+                e1 = vin[v][0]; e2 = vout[v][0]; d1 = de[e1]; d2 = de[e2]
+                if d1 == 0 and d2 == 0: continue
+                det = onx[e1] * onz[e2] - onz[e1] * onx[e2]
+                if abs(det) < .2: ox_ = -(onx[e1] * d1 + onx[e2] * d2) / 2; oz_ = -(onz[e1] * d1 + onz[e2] * d2) / 2
+                else: ox_ = (-d1 * onz[e2] + d2 * onz[e1]) / det; oz_ = (-onx[e1] * d2 + onx[e2] * d1) / det
+                lo = math.hypot(ox_, oz_); lim = 2.5 * max(d1, d2)
+                if lo > lim: ox_ *= lim / lo; oz_ *= lim / lo
+                wx_ = P[v, 0] + ox_; wz_ = P[v, 2] + oz_; ys = []
+                for e in (e1, e2):
+                    if N[e, 1] > .25: ys.append(A0[e, 1] - (N[e, 0] * (wx_ - A0[e, 0]) + N[e, 2] * (wz_ - A0[e, 2])) / N[e, 1])
+                y = min(max(min(ys) if ys else P[v, 1], P[v, 1] - .3), P[v, 1] + 1.2)
+                extra.append((wx_, y, wz_)); oa[e2] = nP + len(extra) - 1; ob[e1] = nP + len(extra) - 1
+    eo = np.column_stack([oa, ob]).ravel().tolist(); ei = np.column_stack([ea[keep], eb[keep]]).ravel().tolist()
+    return eo, ei, extra
+B3 = defaultdict(list); seenb = set()
+for f in sorted(glob.glob('../data/b3d/t/*.pkl')):
+    for b in pickle.load(open(f, 'rb')):
+        if b['id'] in seenb: continue
+        V = b['V']; lon, lat = TR.transform(V[:, 0], V[:, 1]); x = (lon - LON_C) * KXM; z = -(lat - LAT_C) * KZM
+        cx, cz = float(x.mean()), float(z.mean()); k = rkey(cx, cz)
+        if not wanted(k) or not incov(cx, cz): continue
+        seenb.add(b['id']); B3[k].append((np.column_stack([x, V[:, 2], z]), b['T'], b['kind'], b.get('ground')))
+print('b3d buildings', sum(len(v) for v in B3.values()), round(time.time() - t0), 's', flush=True)
 stats = dict(n=0, w=0, a=0)
 for o in osmium.FileProcessor(pbf).with_locations().with_areas().with_filter(osmium.filter.KeyFilter('highway', 'building', 'building:part', 'natural', 'waterway', 'landuse', 'railway', 'man_made')):
     if o.is_node(): stats['n'] += 1; on_node(o)
@@ -391,6 +462,66 @@ def finish(k):
             rp = pp.representative_point()
             for q in tree.query(rp):
                 if outl[q][0].contains(rp): drop.add(int(q))
+    # echte Daecher zuordnen: OSM liefert die Nutzung, swisstopo die Form
+    b3 = B3.get(k, []); b3out = defaultdict(list); fps = []; votes = defaultdict(list); pdrop = set()
+    for V, T, kind, _g in b3:
+        try: fp = shapely.union_all(shapely.buffer(shapely.polygons(V[T][:, :, [0, 2]]), 0.03))
+        except Exception: fp = Point(float(V[:, 0].mean()), float(V[:, 2].mean())).buffer(2)
+        fps.append(fp)
+    if fps:
+        ft = STRtree(fps)
+        for q, (pg, info) in enumerate(outl):
+            rp = pg.representative_point(); hits = ft.query(rp, predicate='within')
+            for j in hits: votes[int(j)].append((pg.area, info, pg))
+            if len(hits): drop.add(q)
+        if outl:
+            ot = STRtree([p for p, _ in outl])
+            for j, fp in enumerate(fps):
+                rp = fp.representative_point()
+                for q in ot.query(rp, predicate='within'): votes[j].append((outl[q][0].area, outl[q][1], outl[q][0])); drop.add(int(q))
+        for q, (pp, _) in enumerate(parts):
+            if len(ft.query(pp.representative_point(), predicate='within')): pdrop.add(q)
+    for j, (V, T, kind, gnd) in enumerate(b3):
+        fp = fps[j]; a = fp.area; cx, cz = float(V[:, 0].mean()), float(V[:, 2].mean())
+        core = any(math.hypot(cx - x, cz - z) < 900 for x, z in bigc); alp = any(math.hypot(cx - x, cz - z) < 1500 for x, z in alpc); flags = 0
+        if votes[j]:
+            _, info, _ = max(votes[j], key=lambda v: v[0]); okind, hist, oid = info[0], info[6], info[7]
+            if hist or okind in BT4: ty = 4
+            elif okind in BT5: ty = 5
+            elif okind in BT3: ty = 3
+            elif okind in BT2: ty = 2
+            elif okind in BT1: ty = 1
+            elif okind in ('house', 'detached', 'semidetached_house', 'bungalow'): ty = 5 if alp and (oid % 5) < 3 else 0
+            else: ty = (2 if a > 1500 else 1) if (a > 330 or core) else (5 if alp and (oid % 5) < 3 else 0)
+        elif kind in ('Sakrales Gebaeude', 'Kapelle', 'Sakraler Turm'): ty = 4
+        elif kind == 'Treibhaus': ty = 2
+        elif kind in ('Lagertank', 'Im Bau', 'Kuehlturm', 'Hochkamin', 'Offenes Gebaeude', 'Flugdach'): ty = 3
+        else: ty = (2 if a > 1500 else 1) if (a > 330 or core) else (5 if alp and (j % 5) < 3 else 0)
+        if kind in ('Offenes Gebaeude', 'Flugdach'): flags |= 1
+        Vd = np.round(np.column_stack([(V[:, 0] - ox) * 10, V[:, 1] * 10, (V[:, 2] - oz) * 10])).astype(np.int64)
+        uq, inv = np.unique(Vd, axis=0, return_inverse=True); T2 = inv.reshape(-1)[T]; good = (T2[:, 0] != T2[:, 1]) & (T2[:, 1] != T2[:, 2]) & (T2[:, 0] != T2[:, 2]); T2 = T2[good]
+        if not len(T2): continue
+        used = np.unique(T2); remap = np.full(len(uq), -1, np.int64); remap[used] = np.arange(len(used)); uq = uq[used]; T2 = remap[T2]
+        mn = uq.min(axis=0); rel = uq - mn; ps = polys(fp)
+        P = uq / 10.0; P[:, 0] += ox; P[:, 2] += oz; ins = 0 if flags or a < 20 or fp.buffer(-1.1).is_empty else (.5 if ty in (0, 5) else .4 if ty in (1, 4) else .2)
+        eo, ei, extra = wall_edges(P, T2, fp, ins, ft, j)
+        if extra:
+            ex = np.array(extra); ex[:, 0] -= ox; ex[:, 2] -= oz; uq = np.vstack([uq, np.maximum(np.round(ex * 10).astype(np.int64), mn[None])]); rel = uq - mn
+        if (not eo and not flags) or len(uq) > 65000 or rel.max() > 65000 or mn[1] < 0 or mn[1] > 65000: continue
+        g = int(round(gnd * 10)) if gnd is not None and gnd == gnd and 100 < gnd < 6000 else 0
+        X = int(mn[0]) + 100000; Z = int(mn[2]) + 100000; ctr = (mn + uq.max(axis=0)) / 20.0
+        ck = (min(19, max(0, int(ctr[0] // 400))), min(19, max(0, int(ctr[2] // 400))))
+        rc = roofcol(max(ps, key=lambda p: p.area)) if ps else 0
+        b3out[ck].append(np.concatenate([[ty | flags << 8, rc, len(uq), len(T2), len(eo) // 2, len(ei) // 2, X & 0xffff, X >> 16, Z & 0xffff, Z >> 16, int(mn[1]), g], rel.ravel(), T2.ravel(), eo, ei]).astype(np.uint16))
+    nb3 = sum(len(v) for v in b3out.values()); b3file = OUT + f'r/{k[0]}_{k[1]}.b3z'
+    if nb3:
+        # Binaerformat: Kopf (uint32: Kennung, Anzahl Chunks, je Chunk [ci | cj << 8, Anzahl, Offset, Laenge]) + uint16-Nutzdaten, zlib-komprimiert
+        hd = [0x31443342, len(b3out)]; pay = []; off = 0
+        for ck in sorted(b3out):
+            n = sum(len(r) for r in b3out[ck]); hd += [ck[0] | ck[1] << 8, len(b3out[ck]), off, n]; off += n; pay += b3out[ck]
+        raw = np.array(hd, dtype='<u4').tobytes() + np.concatenate(pay).astype('<u2').tobytes()
+        open(b3file, 'wb').write(zlib.compress(raw, 9))
+    elif os.path.exists(b3file): os.remove(b3file)
     bout = []
     def emit(pg, info, part):
         kind, h, lev, rshape, rh, base, hist, oid, church = info
@@ -423,7 +554,8 @@ def finish(k):
         bout.append([dm(h), ty | (8 if church and not part else 0), dm(roof), dm(base), roofcol(pg)] + co)
     for q, (pg, info) in enumerate(outl):
         if q not in drop: emit(pg, info, False)
-    for pg, info in parts: emit(pg, info, True)
+    for q, (pg, info) in enumerate(parts):
+        if q not in pdrop: emit(pg, info, True)
     wout = []
     if D['water']:
         u = unary_union(D['water']).simplify(1.0)
@@ -476,12 +608,16 @@ def finish(k):
         if hub is None: hub = a
         s1 = s0 - 13 if s0 > 14 else min(ls.length, s0 + 13); dr = 1 if s0 > 14 else -1; q = ls.interpolate(s1)
         hubinfo[p['id']] = [round(hub.x, 1), round(hub.y, 1), round(math.atan2(dx, dz), 3), round(q.x - dz * dr * 1.2, 1), round(q.y + dx * dr * 1.2, 1), round(math.atan2(dx * dr, dz * dr), 3)]
-    return len(rout), len(bout), len(wout), len(tout) // 3, len(s)
-tot = 0
-for k in sorted(regs):
-    if ONLY and k not in ONLY: continue
-    r = finish(k); tot += r[4]; regout.append([k[0], k[1]])
-    print(f'{k[0]:3d}_{k[1]:3d} roads {r[0]:5d} bld {r[1]:6d} water {r[2]:3d} trees {r[3]:5d} {r[4] / 1024:7.0f} KB', flush=True)
+    return len(rout), len(bout), len(wout), len(tout) // 3, len(s), nb3, (os.path.getsize(b3file) if nb3 else 0)
+def run_region(k):
+    before = set(hubinfo); r = finish(k); return k, r, {i: v for i, v in hubinfo.items() if i not in before}
+tot = 0; todo = [k for k in sorted(regs) if not ONLY or k in ONLY]
+import multiprocessing
+todo.sort(key=lambda k: -len(B3.get(k, [])))
+with multiprocessing.get_context('fork').Pool(int(os.environ.get('JOBS', '4'))) as pool: res = sorted(pool.imap_unordered(run_region, todo))
+for k, r, hubs in res:
+    hubinfo.update(hubs); tot += r[4] + r[6]; regout.append([k[0], k[1], 1 if r[5] else 0])
+    print(f'{k[0]:3d}_{k[1]:3d} roads {r[0]:5d} b3d {r[5]:6d} bld {r[1]:6d} water {r[2]:3d} trees {r[3]:5d} {r[4] / 1024:7.0f} KB + {r[6] / 1024:6.0f} KB', flush=True)
 print('regions total', round(tot / 1e6, 1), 'MB', round(time.time() - t0), 's')
 if not ONLY:
     pl = []

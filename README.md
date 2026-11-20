@@ -38,7 +38,7 @@ Auf dem Handy erscheinen Joystick und Knöpfe automatisch.
 | `src/` | Quellcode: `head.html` (Seite, HUD), `a_core.js` (Grundlagen, Höhenmodell), `b_world.js` (Gelände, Luftbilder), `c_zone.js` (Regionen, Gebäude, Strassen), `d_ent.js` (Fahrzeuge, Figuren, Verkehr), `e_game.js` (Ablauf, Karte, Garage, HUD) |
 | `build.sh` | setzt `src/` zu `index.html` zusammen |
 | `w/` | Landesdaten: Höhenmodell 100 m (`dem*.png`), Luftbilder Schweiz (`ortho.jpg`, `n_*.jpg`) und Kanton Luzern (`l_*.jpg`), Ortsliste, Index mit Tunnelportalen |
-| `r/` | 86 Regionen (je 8 × 8 km): Gebäude, Strassen, Wasser, Bäume, Höhenraster 25 m |
+| `r/` | 86 Regionen (je 8 × 8 km): `*.json` mit Strassen, Wasser, Bäumen, Höhenraster 25 m und den Gebäuden ohne Vermessungsdach; `*.b3z` mit den echten Dachformen (swissBUILDINGS3D, rund 470 000 Gebäude, komprimiertes Binärformat, siehe `pipeline/regions.py`) |
 | `n/` | Hauptstrassen ausserhalb der Detailgebiete |
 | `z/` | scharfe Luftbilder der 142 Orte |
 | `pipeline/` | Python-Skripte, die alle Daten aus den Quellen erzeugen |
@@ -49,7 +49,7 @@ Nach Änderungen in `src/`: `./build.sh` ausführen und `index.html` mit einchec
 
 Die Skripte in `pipeline/` erwarten die Rohdaten in `data/` (nicht im Repository, rund 4 GB)
 und schreiben nach `w/`, `r/`, `n/`, `z/`. Benötigt: Python 3 mit `osmium`, `shapely`,
-`numpy`, `scipy`, `pillow`, `tifffile`, `imagecodecs`.
+`numpy`, `scipy`, `pillow`, `tifffile`, `imagecodecs`, `pyproj`, `pyogrio`, `mapbox_earcut`.
 
 ```sh
 mkdir -p data && cd data
@@ -63,6 +63,9 @@ python3 nat.py dem         # Höhenmodell Schweiz 100 m + Seen
 python3 nat.py nat12       # Luftbild Schweiz 25 m/px
 python3 nat.py lu14        # Luftbild Kanton Luzern 6,25 m/px
 python3 aerial.py          # Luftbilder der Orte
+python3 b3d_list.py        # Kachelliste swissBUILDINGS3D 3.0 für das Detailgebiet
+python3 b3d_fetch.py       # Dachflächen aus den CityGML-Kacheln (rund 4,5 GB Download)
+python3 b3d_gdb.py         # Kacheln, die es nur als FileGDB gibt (Genf, Lausanne, Wallis, Graubünden)
 python3 regions.py         # Regionen, Landesstrassen, Tunnel, Index
 ```
 
@@ -73,6 +76,6 @@ Entwicklungsumgebung; ausserhalb davon die Zeile mit `cafile=` anpassen.
 
 - Karten- und Gebäudedaten: © OpenStreetMap-Mitwirkende, [ODbL](https://www.openstreetmap.org/copyright).
   Die Dateien in `r/` und `n/` sind daraus abgeleitet und stehen ebenfalls unter der ODbL.
-- Luftbilder (SWISSIMAGE) und Höhenmodell (swissALTI3D): © [swisstopo](https://www.swisstopo.admin.ch).
+- Luftbilder (SWISSIMAGE), Höhenmodell (swissALTI3D) und Dachformen der Gebäude (swissBUILDINGS3D 3.0): © [swisstopo](https://www.swisstopo.admin.ch).
 - Höhenmodell 100 m: Mapzen Terrain Tiles (u. a. SRTM, EU-DEM).
 - 3D-Bibliothek: [three.js](https://threejs.org) (MIT).

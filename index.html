@@ -612,9 +612,9 @@ function collide(x, z, r, y) { hit.on = false; const cx = Math.floor(x / 24), cz
 function obb(xs, zs, n) { let best = null; for (let i = 0; i < n; i++) { const j = (i + 1) % n; let dx = xs[j] - xs[i], dz = zs[j] - zs[i]; const l = Math.hypot(dx, dz); if (l < .5) continue; dx /= l; dz /= l; let u0 = 1e18, u1 = -1e18, v0 = 1e18, v1 = -1e18; for (let k = 0; k < n; k++) { const u = xs[k] * dx + zs[k] * dz, v = -xs[k] * dz + zs[k] * dx; if (u < u0) u0 = u; if (u > u1) u1 = u; if (v < v0) v0 = v; if (v > v1) v1 = v; } const A = (u1 - u0) * (v1 - v0); if (!best || A < best.A) best = { A, dx, dz, u0, u1, v0, v1 }; }
   if (!best) return null; let { dx, dz, u0, u1, v0, v1 } = best, a = (u1 - u0) / 2, b = (v1 - v0) / 2; const uc = (u0 + u1) / 2, vc = (v0 + v1) / 2, cx = uc * dx - vc * dz, cz = uc * dz + vc * dx; if (b > a) { const t = a; a = b; b = t; const ndx = -dz, ndz = dx; dx = ndx; dz = ndz; } return { A: best.A, ux: dx, uz: dz, cx, cz, a, b }; }
 const tick = () => new Promise(r => setTimeout(r, 0));
-async function buildRegion(R, d, b3) {
+async function buildRegion(R, d, b3, tr) {
   const x0 = R.x0, z0 = R.z0, r = rng32(R.ix * 7919 + R.iz * 104729 | 0); R.g.position.set(x0, 0, z0); R.far = []; R.segs = new Map(); R.segArr = []; R.parked = [];
-  R.dem = decodeDem(d.dem);
+  R.dem = decodeDem(d.dem); if (tr) trInit(R, tr);
   /* Wasser: Maske fuer Schwimmen/Sperren, Gelaende darunter absenken */
   const M = coarse ? 1024 : 2048, sc = M / REG, mc = document.createElement('canvas'); mc.width = mc.height = M; const mg = mc.getContext('2d', { willReadFrequently: true }); mg.fillStyle = '#f00'; const wpolys = [];
   for (const w of d.water) { const mk = a => { const o = []; for (let i = 0; i < a.length; i += 2) o.push(new THREE.Vector2(a[i] / 10, a[i + 1] / 10)); return o; }, con = mk(w.o), holes = (w.h || []).map(mk).filter(h => h.length > 2); if (con.length < 3) continue; wpolys.push([con, holes]);
@@ -676,7 +676,7 @@ async function buildRegion(R, d, b3) {
   }
   /* Baeume, Masten */
   const ta = [], tb = [], T = d.trees, maxT = coarse ? 1500 : 6000, step = Math.max(1, Math.ceil(T.length / 3 / maxT));
-  for (let i = 0; i < T.length; i += 3 * step) { const x = T[i] * 2, z = T[i + 1] * 2; if (R.wm && regWater(R, x + x0, z + z0)) continue; const s = .75 + r() * .7, y = H(x + x0, z + z0); (T[i + 2] ? ta : tb).push({ x, z, m: TM(x, y - .2, z, s, s * (.9 + r() * .35), s, 0, r() * TAU, 0), c: treeTint[r() * 4 | 0] }); if (r() < .6) regSeg(R, x + x0, z + z0, x + x0, z + z0, y + 5); }
+  for (let i = 0; i < T.length; i += 3 * step) { const x = T[i] * 2, z = T[i + 1] * 2; if (R.wm && regWater(R, x + x0, z + z0)) continue; if (R.trCells && R.trCells.has(Math.floor(x / 400) + ',' + Math.floor(z / 400))) continue; const s = .75 + r() * .7, y = H(x + x0, z + z0); (T[i + 2] ? ta : tb).push({ x, z, m: TM(x, y - .2, z, s, s * (.9 + r() * .35), s, 0, r() * TAU, 0), c: treeTint[r() * 4 | 0] }); if (r() < .6) regSeg(R, x + x0, z + z0, x + x0, z + z0, y + 5); }
   instChunks(zFirGeo, treeMat, ta, R.g, 400, true, R.far); instChunks(zLeafGeo, treeMat, tb, R.g, 400, true, R.far);
   for (const im of R.far) if (im.isInstancedMesh) { im.userData.c = { x: im.userData.c.x + x0, z: im.userData.c.z + z0 }; }
   if (d.tw && d.tw.length) { const parts = []; for (const t of d.tw) { const x = t[0] / 10, z = t[1] / 10, hh = t[2] / 10, y = H(x + x0, z + z0), w = clamp(hh / 26, 1.2, 9); if (t[3]) parts.push([new THREE.CylinderGeometry(w * .35, w * .5, hh, 10), 0x9a9c9a, TM(x, y + hh / 2, z)]); else for (let k = 0; k < 7; k++) { const f0 = k / 7, f1 = (k + 1) / 7, wa = lerp(w, .5, f0), wb = lerp(w, .5, f1), g = new THREE.CylinderGeometry(wb * .7, wa * .7, hh / 7, 4, 1, true); parts.push([g, k % 2 ? 0xf2f2f0 : 0xc62828, TM(x, y + hh * (f0 + f1) / 2, z, 1, 1, 1, 0, Math.PI / 4, 0)]); } regSeg(R, x + x0 - w / 2, z + z0, x + x0 + w / 2, z + z0, y + hh); regSeg(R, x + x0, z + z0 - w / 2, x + x0, z + z0 + w / 2, y + hh); }
@@ -771,17 +771,40 @@ function updB3(px, pz, lim, sync) { const rb = sync ? sync : lim + 520; _b3q.len
   if (!_b3q.length) return 0; _b3q.sort((a, b) => a[0] - b[0]); const t0 = performance.now(); let n = 0;
   for (const q of _b3q) { b3Build(q[1], q[2], q[3]); n++; if (!sync && performance.now() - t0 > 7) break; }
   return _b3q.length - n; }
+/* ---------- echte Baeume (swisstopo swissSURFACE3D): Standort, Hoehe und Krone jedes Baums; Chunks wie bei den Gebaeuden erst in der Naehe */
+const regTR = new Set();
+function trInit(R, buf) { const h = new Uint32Array(buf, 0, 2); if (h[0] !== 0x31455254) return; const nC = h[1], dir = new Uint32Array(buf, 8, nC * 4), U = new Uint16Array(buf, 8 + nC * 16), ch = []; R.trCells = new Set();
+  for (let i = 0; i < nC; i++) { const ci = dir[i * 4] & 255, cj = dir[i * 4] >> 8; R.trCells.add(ci + ',' + cj); ch.push({ x0: ci * 400, z0: cj * 400, x: (ci + .5) * 400 + R.x0, z: (cj + .5) * 400 + R.z0, n: dir[i * 4 + 1], off: dir[i * 4 + 2], ms: null, lod: 0, seg: false }); } R.tr = { U, ch }; }
+function trFree(R, C) { if (!C.ms) return; for (const m of C.ms) { R.g.remove(m); m.dispose(); } const dead = new Set(C.ms); R.far = R.far.filter(m => !dead.has(m)); C.ms = null; C.lod = 0; }
+function trBuild(R, C, lod) { const U = R.tr.U, step = lod === 2 ? 1 : 3, old = C.ms, cnt = [0, 0], k = [0, 0];
+  for (let i = 0; i < C.n; i += step) cnt[U[C.off + i * 3 + 2] >> 14 & 1]++;
+  const ms = [zLeafGeo, zFirGeo].map((g, t) => cnt[t] ? new THREE.InstancedMesh(g, treeMat, cnt[t]) : null);
+  for (let i = 0; i < C.n; i += step) { const p = C.off + i * 3, v = U[p + 2], t = v >> 14 & 1, x = C.x0 + U[p] / 4, z = C.z0 + U[p + 1] / 4, h = (v & 255) / 4, r = (v >> 8 & 63) / 4, X = x + R.x0, Z = z + R.z0, y = H(X, Z);
+    const sy = h / (t ? 9.2 : 8.2), sx = 2 * r / (t ? 6.6 : 6.9) * (lod === 2 ? 1 : 1.3);
+    ms[t].setMatrixAt(k[t], TM(x, y - .15, z, sx, sy, sx, 0, h2(U[p], U[p + 1]) * TAU, 0)); ms[t].setColorAt(k[t]++, treeTint[(U[p] + U[p + 1]) & 3]);
+    if (!C.seg && lod === 2 && h > 5) regSeg(R, X, Z, X, Z, y + 5); }
+  if (lod === 2) C.seg = true; C.ms = []; C.lod = lod;
+  for (const m of ms) if (m) { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; m.castShadow = lod === 2; m.userData.c = C; R.g.add(m); R.far.push(m); C.ms.push(m); }
+  if (old) { for (const m of old) { R.g.remove(m); m.dispose(); } const dead = new Set(old); R.far = R.far.filter(m => !dead.has(m)); } }
+const _trq = [];
+function updTrees(px, pz, lim, sync) { const rn = coarse ? 600 : 900, rb = sync ? sync : Math.min(lim + 300, coarse ? 1100 : 2000); _trq.length = 0;
+  for (const R of regions.values()) { if (R.state !== 'ready' || !R.tr) continue; if (Math.hypot(clamp(px, R.x0, R.x0 + REG) - px, clamp(pz, R.z0, R.z0 + REG) - pz) > rb + 900) { if (!sync) for (const C of R.tr.ch) if (C.ms) trFree(R, C); continue; }
+    for (const C of R.tr.ch) { const d = Math.hypot(C.x - px, C.z - pz), want = d < rb ? (d < rn ? 2 : 1) : 0;
+      if (!want) { if (C.ms && !sync && d > rb + 320) trFree(R, C); continue; }
+      if (C.lod === want || (C.lod === 2 && d < rn + 170)) continue; _trq.push([d - (C.lod ? 0 : 600), R, C, want]); } }
+  if (!_trq.length) return; _trq.sort((a, b) => a[0] - b[0]); const t0 = performance.now();
+  for (const q of _trq) { trBuild(q[1], q[2], q[3]); if (!sync && performance.now() - t0 > 4) break; } }
 function freeRegion(R) { R.dead = true; regions.delete(RK(R.ix, R.iz)); _lr = null; scene.remove(R.g); R.g.traverse(o => { if (o.geometry && o.geometry !== zFirGeo && o.geometry !== zLeafGeo) o.geometry.dispose(); }); if (R.set) freeRoadSet(R.set); dirtyRect(R.x0 - 30, R.z0 - 30, R.x0 + REG + 30, R.z0 + REG + 30, 1); if (typeof onRegionGone === 'function') onRegionGone(R); }
 let regIndex = new Set(), regBusy = 0;
 function loadRegion(ix, iz) { const k = RK(ix, iz); if (regions.has(k) || !regIndex.has(k)) return regions.get(k) || null;
   const R = { ix, iz, x0: ix * REG, z0: iz * REG, state: 'loading', g: new THREE.Group(), hc: null, dem: null, wm: null, set: null, far: [], parked: [], spawned: false }; regions.set(k, R); regBusy++;
-  const b3 = regB3.has(k) && typeof DecompressionStream === 'function' ? fetch('r/' + ix + '_' + iz + '.b3z').then(r => r.ok ? r.arrayBuffer() : null).then(b => b && inflate(b)).catch(e => { console.error(e); return null; }) : null;
-  R.promise = Promise.all([getJSON('r/' + ix + '_' + iz + '.json'), b3]).then(q => buildRegion(R, q[0], q[1])).catch(e => { console.error(e); R.state = 'failed'; }).finally(() => { regBusy--; if (R.state === 'ready' && typeof onRegionReady === 'function') onRegionReady(R); });
+  const bin = (set, ext) => set.has(k) && typeof DecompressionStream === 'function' ? fetch('r/' + ix + '_' + iz + ext).then(r => r.ok ? r.arrayBuffer() : null).then(b => b && inflate(b)).catch(e => { console.error(e); return null; }) : null;
+  R.promise = Promise.all([getJSON('r/' + ix + '_' + iz + '.json'), bin(regB3, '.b3z'), bin(regTR, '.trz')]).then(q => buildRegion(R, q[0], q[1], q[2])).catch(e => { console.error(e); R.state = 'failed'; }).finally(() => { regBusy--; if (R.state === 'ready' && typeof onRegionReady === 'function') onRegionReady(R); });
   return R; }
 function updRegions(px, pz) { const near = 3200, far = 6500;
   for (let ix = Math.floor((px - near) / REG); ix <= Math.floor((px + near) / REG); ix++) for (let iz = Math.floor((pz - near) / REG); iz <= Math.floor((pz + near) / REG); iz++) if (regBusy < 2) loadRegion(ix, iz);
   for (const R of regions.values()) { if (R.state === 'loading') continue; const d = Math.hypot(clamp(px, R.x0, R.x0 + REG) - px, clamp(pz, R.z0, R.z0 + REG) - pz); if (d > far && !chars.some(c => Math.hypot(clamp(c.x, R.x0, R.x0 + REG) - c.x, clamp(c.z, R.z0, R.z0 + REG) - c.z) < 1500)) freeRegion(R); } }
-async function ensureRegions(x, z) { const ps = []; for (let ix = Math.floor((x - 900) / REG); ix <= Math.floor((x + 900) / REG); ix++) for (let iz = Math.floor((z - 900) / REG); iz <= Math.floor((z + 900) / REG); iz++) { const R = loadRegion(ix, iz); if (R && R.promise) ps.push(R.promise); } await Promise.all(ps); updB3(x, z, 0, 620); }
+async function ensureRegions(x, z) { const ps = []; for (let ix = Math.floor((x - 900) / REG); ix <= Math.floor((x + 900) / REG); ix++) for (let iz = Math.floor((z - 900) / REG); iz <= Math.floor((z + 900) / REG); iz++) { const R = loadRegion(ix, iz); if (R && R.promise) ps.push(R.promise); } await Promise.all(ps); updB3(x, z, 0, 620); updTrees(x, z, 0, 700); }
 
 /* ============================================================ Landesstrassen ausserhalb der Detailgebiete, Tunnelportale */
 const natTiles = new Map(), NT = 51200, NC = 3200; let natIndex = new Set();
@@ -1313,6 +1336,7 @@ function stream(px, pz, py) {
   updRegions(px, pz); updNatRoads(px, pz); updPortalMeshes(px, pz); pumpImages();
   const lim = VIEW + Math.max(0, py - H(px, pz) - 40) * 3;
   updB3(px, pz, Math.min(lim, VIEW + 1500));
+  updTrees(px, pz, lim);
   for (const R of regions.values()) if (R.state === 'ready') for (const m of R.far) { const c = m.userData.c; m.visible = Math.hypot(c.x - px, c.z - pz) < lim + 420; }
   for (const T of natTiles.values()) for (const S of T.sets.values()) for (const m of S.far) { const c = m.userData.c; m.visible = Math.hypot(c.x - px, c.z - pz) < lim + 900; }
   for (const v of vehicles) v.g.visible = Math.hypot(v.x - px, v.z - pz) < lim;
@@ -1368,7 +1392,7 @@ async function boot(hot) {
     for (const [i, j] of index.lu) addImg(i * 25600, j * 25600, (i + 1) * 25600, (j + 1) * 25600, 'w/l_' + i + '_' + j + '.jpg', 1, 2, .4);
     initPlaces(places);
     await say('Lade Höhenmodell …'); await loadDEM(index.dem);
-    regIndex = new Set(index.regions.map(q => RK(q[0], q[1]))); for (const q of index.regions) if (q[2]) regB3.add(RK(q[0], q[1])); natIndex = new Set(index.nat.map(q => q[0] + '_' + q[1])); initPortals(index.tunnels);
+    regIndex = new Set(index.regions.map(q => RK(q[0], q[1]))); for (const q of index.regions) { if (q[2]) regB3.add(RK(q[0], q[1])); if (q[3]) regTR.add(RK(q[0], q[1])); } natIndex = new Set(index.nat.map(q => q[0] + '_' + q[1])); initPortals(index.tunnels);
     buildClouds(); buildLabels();
     const sv = (hot && hot.chars) ? hot : loadSave();
     buildChars(sv); buildTraffic(); buildPeds(); buildMarkers(); buildGarageUI(); setShadows(shadowsOK);

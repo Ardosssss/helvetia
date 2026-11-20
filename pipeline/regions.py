@@ -616,7 +616,7 @@ import multiprocessing
 todo.sort(key=lambda k: -len(B3.get(k, [])))
 with multiprocessing.get_context('fork').Pool(int(os.environ.get('JOBS', '4'))) as pool: res = sorted(pool.imap_unordered(run_region, todo))
 for k, r, hubs in res:
-    hubinfo.update(hubs); tot += r[4] + r[6]; regout.append([k[0], k[1], 1 if r[5] else 0])
+    hubinfo.update(hubs); tot += r[4] + r[6]; regout.append([k[0], k[1], 1 if r[5] else 0, 1 if os.path.exists(OUT + f'r/{k[0]}_{k[1]}.trz') else 0])
     print(f'{k[0]:3d}_{k[1]:3d} roads {r[0]:5d} b3d {r[5]:6d} bld {r[1]:6d} water {r[2]:3d} trees {r[3]:5d} {r[4] / 1024:7.0f} KB + {r[6] / 1024:6.0f} KB', flush=True)
 print('regions total', round(tot / 1e6, 1), 'MB', round(time.time() - t0), 's')
 if not ONLY:

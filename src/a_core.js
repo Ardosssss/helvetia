@@ -27,7 +27,13 @@ function insideCH(x, z) { let c = false; for (let i = 0, j = BN - 1; i < BN; j =
 /* ------------------------------------------------------------ Renderer: Fernsicht + Nahbereich */
 const cv = $('c');
 const coarse = matchMedia('(pointer:coarse)').matches;
-const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: !coarse, powerPreference: 'high-performance' });
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: !coarse, powerPreference: 'high-performance' });
+} catch {
+  $('load').textContent = 'Für die 3D-Spielwelt braucht dein Browser WebGL. Aktiviere die Grafikbeschleunigung und lade die Seite neu.';
+  return;
+}
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, coarse ? 1.5 : 2));
 renderer.autoClear = false;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;

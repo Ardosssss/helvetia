@@ -70,9 +70,9 @@ Die folgenden Ordner entstehen durch die Pipeline und liegen im R2-Bucket (nicht
 | Pfad | Inhalt |
 |---|---|
 | `w/` | Landesdaten: Höhenmodell 100 m (`dem*.png`), Luftbilder Schweiz (`ortho.jpg`, `n_*.jpg`) und Kanton Luzern (`l_*.jpg`), Ortsliste, Index mit Tunnelportalen |
-| `r/` | 86 Regionen (je 8 × 8 km): `*.json` mit Strassen, Wasser, Bäumen, Höhenraster 25 m und den Gebäuden ohne Vermessungsdach; `*.b3z` mit den echten Dachformen (swissBUILDINGS3D, rund 470 000 Gebäude, komprimiertes Binärformat, siehe `pipeline/regions.py`); `*.trz` mit echten Bäumen (Standort, Höhe, Krone) im ganzen Kanton Luzern sowie in Biel, Nidau und Port |
+| `r/` | 86 Regionen (je 8 × 8 km): `*.json` mit Strassen, Wasser, Bäumen, Höhenraster 25 m und den Gebäuden ohne Vermessungsdach; `*.b3z` mit den echten Dachformen (swissBUILDINGS3D, rund 470 000 Gebäude, komprimiertes Binärformat, siehe `pipeline/regions.py`); `*.trz` mit echten Bäumen (Standort, Höhe, Krone) im ganzen Kanton Luzern sowie in Biel, Nidau und Port (rund 5 Millionen Bäume in 42 Regionen) |
 | `n/` | Hauptstrassen ausserhalb der Detailgebiete |
-| `z/` | Luftbilder der 144 Orte (rund 1 m pro Pixel, auf das 800-m-Geländeraster ausgerichtet) und besonders scharfe 800-m-Kacheln `h_*.jpg` (0,4 m pro Pixel) für den ganzen Kanton Luzern sowie Biel, Nidau und Port (2595 Kacheln, rund 1,9 GB) |
+| `z/` | Luftbilder der 144 Orte (rund 1 m pro Pixel, auf das 800-m-Geländeraster ausgerichtet) und besonders scharfe 800-m-Kacheln `h_*.jpg` (0,4 m pro Pixel) für den ganzen Kanton Luzern sowie Biel, Nidau und Port (2595 Kacheln, rund 1,7 GB) |
 
 Nach Änderungen in `src/`: `./build.sh` ausführen und `index.html` mit einchecken.
 

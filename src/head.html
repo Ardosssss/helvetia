@@ -1,0 +1,184 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Helvetia Open World</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: Vollbild-Spielflaeche; HUD als Strassenschilder in den Ecken, Bedienung am unteren Rand */
+:root{
+  --bg:#0c1417; --panel:rgba(12,20,23,.78); --line:rgba(255,255,255,.16);
+  --fg:#f3f6f4; --muted:#a8b7b3;
+  --red:#da291c; --green:#0a7a4a; --blue:#1b5fa9; --yellow:#ffcc00;
+  --display:'Barlow Condensed','Arial Narrow',sans-serif;
+  --body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.4;overflow:hidden;
+  touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+#app{position:relative;height:100%;overflow:hidden}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+#hud{position:absolute;inset:0;pointer-events:none;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
+#hin{position:relative;height:100%}
+#hin>*{position:absolute}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+
+#tl{left:0;top:0;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+#mini{width:128px;height:128px;border-radius:50%;border:3px solid var(--fg);background:var(--bg);box-shadow:0 2px 12px rgba(0,0,0,.5);pointer-events:auto;cursor:pointer}
+#sign{background:var(--blue);color:var(--fg);border:2px solid var(--fg);border-radius:5px;padding:3px 10px 4px;min-width:128px;max-width:230px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+#sign.city{background:var(--fg);color:#111}
+#sign.pass{background:var(--green)}
+#sign b{display:block;font-family:var(--display);font-weight:600;font-size:21px;line-height:1.1;letter-spacing:.01em;overflow-wrap:anywhere}
+#sign span{font-size:12px;opacity:.85;font-variant-numeric:tabular-nums}
+
+#tr{right:0;top:0;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+#stats{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;display:grid;grid-template-columns:auto auto;column-gap:10px;row-gap:1px;font-variant-numeric:tabular-nums}
+#stats dt{color:var(--muted);font-size:12px;align-self:center;text-transform:uppercase;letter-spacing:.06em}
+#stats dd{margin:0;font-family:var(--display);font-weight:600;font-size:19px;text-align:right}
+#tools{display:flex;gap:6px;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end}
+.tool{background:var(--panel);border:1px solid var(--line);border-radius:6px;min-width:42px;height:38px;padding:0 9px;font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.04em;text-transform:uppercase}
+.tool:active{background:var(--red)}
+
+#mission{left:50%;top:0;transform:translateX(-50%);max-width:min(46%,420px);background:var(--yellow);color:#151515;border-radius:5px;padding:4px 12px;font-weight:600;font-size:14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+#toast{left:50%;top:22%;transform:translateX(-50%);max-width:min(86%,460px);background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:5px;padding:8px 14px;font-weight:500;text-align:center;opacity:0;transition:opacity .25s}
+#toast.on{opacity:1}
+#prompt{left:50%;bottom:118px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:6px 12px;font-weight:500;white-space:nowrap}
+kbd{font-family:var(--display);font-weight:700;background:var(--fg);color:#111;border-radius:3px;padding:0 6px;margin-right:6px}
+#enter{left:50%;bottom:160px;transform:translateX(-50%);pointer-events:auto;background:var(--fg);color:#111;border:3px solid #111;outline:2px solid var(--fg);border-radius:6px;padding:6px 16px 7px;font-family:var(--display);font-weight:700;font-size:22px;line-height:1.1;text-align:center;white-space:nowrap}
+#enter small{display:block;font-family:var(--body);font-weight:500;font-size:12px}
+#speedo{left:50%;bottom:0;transform:translateX(-50%);text-align:center;text-shadow:0 2px 8px rgba(0,0,0,.7)}
+#speedo b{font-family:var(--display);font-weight:700;font-size:54px;line-height:.9;font-variant-numeric:tabular-nums}
+#speedo span{font-family:var(--display);font-size:18px;margin-left:4px;color:var(--muted)}
+#speedo em{display:block;font-style:normal;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg)}
+#keys{left:0;bottom:0;max-width:calc(50% - 170px);color:var(--muted);font-size:12px;line-height:1.7;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+#keys kbd{background:none;color:var(--fg);padding:0;margin:0}
+
+#joy{width:112px;height:112px;border-radius:50%;border:2px solid rgba(255,255,255,.45);background:rgba(12,20,23,.35);left:6px;bottom:8px}
+#joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:rgba(255,255,255,.8)}
+#pad{right:0;bottom:6px;display:grid;grid-template-columns:repeat(2,64px);gap:10px;pointer-events:auto}
+.pb{width:64px;height:64px;border-radius:50%;background:rgba(12,20,23,.55);border:2px solid rgba(255,255,255,.5);font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.03em;text-transform:uppercase;line-height:1.05;padding:0;touch-action:none}
+.pb.on,.pb:active{background:var(--red);border-color:var(--fg)}
+#bA{grid-column:2;background:rgba(218,41,28,.75)}
+
+/* Startbild */
+#start{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:flex-start;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px;
+  background:linear-gradient(to top,rgba(12,20,23,.94) 0%,rgba(12,20,23,.6) 45%,rgba(12,20,23,0) 80%);overflow:auto}
+#startin{width:min(100%,560px);display:flex;flex-direction:column;gap:12px}
+#brand{display:flex;align-items:center;gap:14px}
+#cross{width:52px;height:52px;flex:none;background:var(--red);border-radius:4px;position:relative}
+#cross:before,#cross:after{content:"";position:absolute;background:var(--fg);left:50%;top:50%;transform:translate(-50%,-50%)}
+#cross:before{width:62%;height:19%}#cross:after{width:19%;height:62%}
+h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(44px,11vw,76px);line-height:.86;letter-spacing:.02em;text-transform:uppercase}
+h1 small{display:block;font-size:.3em;font-weight:500;letter-spacing:.22em;color:var(--muted);margin-top:8px}
+#load{color:var(--fg);font-weight:500;margin:0}
+#pick{display:flex;gap:10px;flex-wrap:wrap}
+.card{flex:1 1 150px;min-width:0;display:flex;gap:10px;align-items:center;text-align:left;background:var(--panel);border:2px solid var(--line);border-radius:8px;padding:8px 10px}
+.card[aria-pressed="true"]{border-color:var(--yellow)}
+.card .av{width:46px;height:46px;border-radius:50%;flex:none;position:relative;overflow:hidden;background:#27343a}
+.card .av:before{content:"";position:absolute;left:50%;top:9px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:var(--skin)}
+.card .av:after{content:"";position:absolute;left:50%;top:27px;width:34px;height:30px;margin-left:-17px;border-radius:14px 14px 0 0;background:var(--top)}
+.card b{display:block;font-family:var(--display);font-weight:600;font-size:20px;line-height:1.1}
+.card span{font-size:12.5px;color:var(--muted)}
+#go{align-self:flex-start;background:var(--red);border:0;border-radius:6px;padding:10px 26px;font-family:var(--display);font-weight:700;font-size:24px;letter-spacing:.06em;text-transform:uppercase}
+#go:disabled{opacity:.5;cursor:default}
+#how{margin:0;color:var(--muted);font-size:13px;max-width:62ch}
+.credit{margin:0;color:var(--muted);font-size:11.5px}
+
+/* Ueberlagerungen: Karte und Garage */
+.ov{position:absolute;inset:0;background:rgba(8,13,15,.94);display:flex;flex-direction:column;gap:10px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
+.ovbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex:none}
+.ovbar b{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:.04em;text-transform:uppercase}
+.ovbar span{color:var(--muted);font-size:13px}
+#mapbody{flex:1;min-height:0;display:flex;gap:12px}
+#bigwrap{flex:1 1 60%;min-width:0;min-height:0;display:flex;align-items:flex-start;justify-content:center}
+#big{max-width:100%;max-height:100%;border:2px solid var(--fg);border-radius:4px;cursor:pointer;touch-action:none}
+#plist{flex:0 0 250px;min-height:0;display:flex;flex-direction:column;gap:6px}
+#pfind{background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--fg);font:inherit;padding:7px 10px;user-select:text;-webkit-user-select:text}
+#pitems{flex:1;min-height:0;overflow-y:auto;touch-action:pan-y;display:flex;flex-direction:column;gap:2px;padding-right:4px}
+#pitems h3{margin:8px 0 2px;font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.pi{display:flex;justify-content:space-between;gap:8px;background:none;border:0;border-bottom:1px solid var(--line);text-align:left;padding:6px 4px;font-weight:500}
+.pi:hover,.pi:active{background:var(--panel)}
+.pi span{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pi.here{color:var(--yellow)}
+#garbody{flex:1;min-height:0;overflow-y:auto;touch-action:pan-y;display:flex;flex-direction:column;gap:10px;max-width:760px;width:100%;margin:0 auto}
+#garbody h3{margin:6px 0 0;font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+#garbody p{margin:0;color:var(--muted);font-size:13px}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.vb{background:var(--panel);border:2px solid var(--line);border-radius:8px;padding:9px 10px;text-align:left}
+.vb:hover,.vb:active{border-color:var(--yellow)}
+.vb b{display:block;font-family:var(--display);font-weight:600;font-size:19px;line-height:1.1}
+.vb span{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.vb i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px;border:1px solid rgba(255,255,255,.5)}
+#sw{display:flex;gap:8px;flex-wrap:wrap}
+.swb{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);padding:0}
+.swb[aria-pressed="true"]{border-color:var(--yellow);outline:2px solid var(--yellow)}
+#fade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .28s;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:600;font-size:26px;letter-spacing:.06em}
+#fade.on{opacity:1}
+@media (max-width:640px){#keys{display:none}#stats dd{font-size:17px}#mini{width:104px;height:104px}#sign{min-width:104px;max-width:150px}#sign b{font-size:18px}#mission{top:226px;width:max-content;max-width:94%}#toast{top:36%}#toast{top:32%}#speedo b{font-size:44px}.tool{font-size:13px;padding:0 7px;min-width:0;height:34px}#tools{max-width:150px}.card b{font-size:18px}#mapbody{flex-direction:column}#plist{flex:1 1 50%}#bigwrap{flex:0 0 auto}#big{max-height:34vh}}
+@media (prefers-reduced-motion:reduce){#fade,#toast{transition:none}}
+</style>
+
+<div id="app">
+  <canvas id="c" tabindex="0" aria-label="Spielansicht"></canvas>
+  <div id="hud" hidden><div id="hin">
+    <div id="tl">
+      <canvas id="mini" width="256" height="256" title="Karte öffnen"></canvas>
+      <div id="sign"><b id="place">Schweiz</b><span id="alt">– m ü. M.</span></div>
+    </div>
+    <div id="tr">
+      <dl id="stats">
+        <dt>Zeit</dt><dd id="clock">09:30</dd>
+        <dt>Konto</dt><dd id="money">CHF 0.–</dd>
+        <dt>Orte</dt><dd id="found">0/142</dd>
+      </dl>
+      <div id="tools">
+        <button class="tool" id="tMap" type="button">Karte</button>
+        <button class="tool" id="tGar" type="button">Garage</button>
+        <button class="tool" id="tSw" type="button">Wechseln</button>
+        <button class="tool" id="tSnd" type="button" aria-pressed="true">Ton</button>
+      </div>
+    </div>
+    <div id="mission" hidden></div>
+    <div id="toast" role="status"></div>
+    <div id="prompt" hidden></div>
+    <div id="speedo" hidden><b id="kmh">0</b><span>km/h</span><em id="vname"></em></div>
+    <div id="keys"><kbd>WASD</kbd> bewegen · <kbd>Maus ziehen</kbd> umsehen · <kbd>E</kbd> ein-/aussteigen · <kbd>G</kbd> Garage<br><kbd>Shift</kbd> rennen · <kbd>Leertaste</kbd> springen / Handbremse · <kbd>C</kbd> Charakter · <kbd>M</kbd> Karte · <kbd>R</kbd> zurück auf die Strasse</div>
+    <div id="joy" hidden><i id="knob"></i></div>
+    <div id="pad" hidden>
+      <button class="pb" id="bC" type="button">Rennen</button>
+      <button class="pb" id="bB" type="button">Sprung</button>
+      <button class="pb" id="bA" type="button">Rein</button>
+    </div>
+  </div></div>
+
+  <div id="start"><div id="startin">
+    <div id="brand"><div id="cross"></div><h1>Helvetia<small>Open World Schweiz</small></h1></div>
+    <div id="pick">
+      <button class="card" id="p0" type="button" aria-pressed="true" style="--skin:#e6b594;--top:#1f4e8c"><div class="av"></div><div><b>Charakter 1</b><span id="p0s">Start in Zürich</span></div></button>
+      <button class="card" id="p1" type="button" aria-pressed="false" style="--skin:#c98f6a;--top:#b3261e"><div class="av"></div><div><b>Charakter 2</b><span id="p1s">Start in Genf</span></div></button>
+    </div>
+    <button id="go" type="button" disabled>Losfahren</button>
+    <p id="load">Die Schweiz wird aufgebaut …</p>
+    <p id="how">Die ganze Schweiz im Massstab 1:1 mit echtem Gelände. 27 Städte und der ganze Kanton Luzern mit jedem Gebäude und jeder Strasse. Fahrzeuge holst du jederzeit aus der Garage.</p>
+    <p class="credit">Karten: © OpenStreetMap-Mitwirkende · Luftbilder: © swisstopo · Höhen: © swisstopo, Mapzen Terrain Tiles</p>
+  </div></div>
+
+  <div id="mapov" class="ov" hidden>
+    <div class="ovbar"><div><b>Landeskarte</b><br><span id="maphint">Ort wählen: mit dem Zug dorthin reisen.</span><br><span class="credit">© swisstopo · © OpenStreetMap-Mitwirkende</span></div><button class="tool" id="mapclose" type="button">Schliessen</button></div>
+    <div id="mapbody">
+      <div id="bigwrap"><canvas id="big" width="1400" height="942"></canvas></div>
+      <div id="plist"><input id="pfind" type="search" placeholder="Ort suchen …" autocomplete="off" aria-label="Ort suchen"><div id="pitems"></div></div>
+    </div>
+  </div>
+  <div id="garov" class="ov" hidden>
+    <div class="ovbar"><div><b>Garage</b><br><span>Fahrzeug wählen: es steht sofort neben dir.</span></div><button class="tool" id="garclose" type="button">Schliessen</button></div>
+    <div id="garbody">
+      <h3>Lackfarbe</h3><div id="sw"></div>
+      <h3>Fahrzeuge</h3><div class="vgrid" id="vstd"></div>
+      <h3 id="spt">Spezialfahrzeuge</h3><p>Nur dieser Charakter kann sie bestellen. Die Modelle sind Platzhalter, bis die echten feststehen.</p><div class="vgrid" id="vsp"></div>
+    </div>
+  </div>
+  <div id="fade"></div>
+</div>

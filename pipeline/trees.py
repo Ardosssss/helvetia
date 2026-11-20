@@ -42,17 +42,18 @@ for f in glob.glob('../data/b3d/t/*.pkl'):
                 if f'{e}-{n}' in need: BLD[(e, n)].append(V[b['T']][:, :, :2])
 print('Gebaeude in', len(BLD), 'Kacheln', flush=True)
 tile_cache = {}
-def z17(lon, lat):
-    fx = (lon + 180) / 360 * 131072; fy = (1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * 131072; tx, ty = int(fx), int(fy); k = (tx, ty)
+def colour(lon, lat):
+    """Farbe im Luftbild (Kacheln der Stufe 18 aus hires.py, je 2 x 2 Pixel gemittelt, rund 0,8 m)."""
+    fx = (lon + 180) / 360 * 262144; fy = (1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * 262144; tx, ty = int(fx), int(fy); k = (tx, ty)
     if k not in tile_cache:
-        p = f'../data/tiles/17/{tx}/{ty}.jpg'
-        try: a = np.asarray(Image.open(p).convert('RGB')).astype(np.int16) if os.path.exists(p) else None
+        p = f'../data/tiles/18/{tx}/{ty}.jpg'
+        try: a = np.asarray(Image.open(p).convert('RGB').resize((128, 128), Image.BOX)).astype(np.int16) if os.path.exists(p) else None
         except Exception: a = None
         tile_cache[k] = a
     a = tile_cache[k]
-    return None if a is None else a[min(255, int((fy - ty) * 256)), min(255, int((fx - tx) * 256))]
+    return None if a is None else a[min(127, int((fy - ty) * 128)), min(127, int((fx - tx) * 128))]
 def work(key):
-    year, href, e, n = need[key]; p = DSM + key + '.tif'
+    year, href, e, n = need[key]; p = DSM + key + '.tif'; tile_cache.clear()
     if fetch(href, p, timeout=300) is None: return key, None
     try: dsm = tifffile.imread(p).astype(np.float32)
     except Exception as ex: return key, None
@@ -75,7 +76,7 @@ def work(key):
     E = e * 1000 + xs + .5; N = n * 1000 + 1000 - ys - .5; lon, lat = TO84.transform(E, N); X = (np.asarray(lon) - LON_C) * KXM; Z = -(np.asarray(lat) - LAT_C) * KZM
     for q in range(len(ys)):
         if (math.floor(X[q] / T), math.floor(Z[q] / T)) not in cells: continue
-        c = z17(lon[q], lat[q])
+        c = colour(lon[q], lat[q])
         if c is not None:
             r_, g_, b_ = int(c[0]), int(c[1]), int(c[2])
             if not ((g_ >= r_ * .98 and g_ >= b_) or r_ + g_ + b_ < 230): continue        # nur Gruenes oder Schatten: keine Kraene, Masten, Lastwagen

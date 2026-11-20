@@ -59,6 +59,9 @@ def work(item):
 if __name__ == '__main__':
     tiles = json.load(open('../data/b3d_tiles.json'))
     items = [(k, v) for k, v in tiles.items() if re.match(r'^\d{4}-\d{2}$', k) and v['url']]
+    if sys.argv[1:] == ['baeume']:                      # nur das Schwerpunktgebiet: genuegt fuer trees.py
+        from shapely.geometry import box; from shapely.prepared import prep; from focus import focus_area, wx, wz
+        fa = prep(focus_area().buffer(900)); items = [(k, v) for k, v in items if fa.intersects(box(wx(v['bbox'][0]), wz(v['bbox'][3]), wx(v['bbox'][2]), wz(v['bbox'][1])))]
     items.sort(key=lambda kv: (not kv[1]['lu'], kv[0]))
     t0 = time.time(); tot = 0; mb = 0
     with Pool(4) as pool:

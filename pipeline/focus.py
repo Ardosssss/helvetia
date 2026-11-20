@@ -1,13 +1,15 @@
-"""Schwerpunktgebiet fuer besonders genaue Daten (scharfe Luftbilder, echte Baeume): ausgewaehlte Orte und die Strasse dazwischen."""
-import json, math, os, glob
+"""Schwerpunktgebiet fuer besonders genaue Daten (scharfe Luftbilder, echte Baeume): der ganze Kanton Luzern,
+dazu ausgewaehlte Orte ausserhalb und die Strasse dazwischen."""
+import json, math, os, glob, pickle
 import numpy as np
 from shapely.geometry import Point, LineString
 from shapely.ops import unary_union
 from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import dijkstra
 from geo import *
-PLACES = ['l_gunzwil', 'l_beromunster', 'l_neudorf', 'l_hildisrieden', 'LU', 'BI', 'NI', 'PO']      # ganzer Ort scharf
-ROUTES = [['l_gunzwil', 'l_beromunster', 'l_neudorf', 'l_hildisrieden', 'l_rothenburg', 'l_emmen', 'LU'], ['BI', 'NI', 'PO']]   # Strasse dazwischen
+KANTON = True                                  # ganzer Kanton Luzern (Grenze aus coverage.py)
+PLACES = ['BI', 'NI', 'PO']                    # ausserhalb des Kantons: ganzer Ort
+ROUTES = [['BI', 'NI', 'PO']]                  # und die Strasse dazwischen
 P = {p['id']: p for p in json.load(open('places.json'))}
 def route(ids):
     """Kuerzester Weg auf den Haupt- und Nebenstrassen der Regionen (ohne Autobahn), als Linienzug in Weltkoordinaten."""
@@ -39,4 +41,5 @@ def route(ids):
         line += seg
     return LineString(line)
 def focus_area():
-    return unary_union([Point(wx(P[i]['lon']), wz(P[i]['lat'])).buffer(P[i]['r'] + 150) for i in PLACES] + [route(r).buffer(260) for r in ROUTES])
+    lu = [pickle.load(open('../data/coverage.pkl', 'rb'))['lu']] if KANTON else []
+    return unary_union(lu + [Point(wx(P[i]['lon']), wz(P[i]['lat'])).buffer(P[i]['r'] + 150) for i in PLACES] + [route(r).buffer(260) for r in ROUTES])

@@ -234,6 +234,10 @@ const fmtM = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '’');
 const chf = n => 'CHF ' + fmtM(n) + '.–';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const wait = ms => new Promise(r => setTimeout(r, ms));
+/* Die grossen Spieldaten (w/, r/, n/, z/) liegen nicht im Repository, sondern in einem Cloudflare-R2-Bucket (hochgeladen mit pipeline/upload.py).
+   Mit ?data=lokal im Seitenaufruf laedt das Spiel stattdessen die Ordner neben index.html, etwa nach einem eigenen Lauf der Pipeline. */
+const DATA_URL = 'https://pub-fb46c74520864c0ab68934bf502da03f.r2.dev/';
+const DATA = new URLSearchParams(location.search).get('data') === 'lokal' ? '' : DATA_URL;
 const getJSON = async u => { const r = await fetch(u); if (!r.ok) throw new Error(u + ' fehlt (' + r.status + ')'); return r.json(); };
 
 /* ------------------------------------------------------------ Eine Welt im Massstab 1:1 (Meter) */
@@ -287,7 +291,7 @@ function taperBox(w, h, d, tx, tz) { const g = new THREE.BoxGeometry(w, h, d), p
 function canvasTex(w, h, draw, repeat) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; }
 function geo(attrs, idx) { const g = new THREE.BufferGeometry(); for (const k in attrs) g.setAttribute(k, new THREE.BufferAttribute(attrs[k] instanceof Float32Array ? attrs[k] : new Float32Array(attrs[k]), k === 'uv' ? 2 : 3)); if (idx) g.setIndex(idx); return g; }
 function instChunks(geom, mat, items, parent, chk, shadow, list) { const map = new Map(); for (const it of items) { const k = Math.floor(it.x / chk) + ',' + Math.floor(it.z / chk); let a = map.get(k); if (!a) map.set(k, a = []); a.push(it); } for (const arr of map.values()) { let cx = 0, cz = 0; for (const it of arr) { cx += it.x; cz += it.z; } const im = new THREE.InstancedMesh(geom, mat, arr.length); arr.forEach((it, i) => { im.setMatrixAt(i, it.m); if (it.c) im.setColorAt(i, it.c); }); im.instanceMatrix.needsUpdate = true; if (shadow) im.castShadow = true; im.userData.c = { x: cx / arr.length, z: cz / arr.length }; parent.add(im); if (list) list.push(im); } }
-function loadImage(url) { return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('Bild fehlt: ' + url)); im.src = url; }); }
+function loadImage(url) { return new Promise((res, rej) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = () => rej(new Error('Bild fehlt: ' + url)); im.src = url; }); }
 function imgTexture(im) { let src = im; if (Math.max(im.width, im.height) > MAXTEX) { const s = MAXTEX / Math.max(im.width, im.height), c = document.createElement('canvas'); c.width = Math.round(im.width * s); c.height = Math.round(im.height * s); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); src = c; } const t = new THREE.Texture(src); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); t.needsUpdate = true; return t; }
 const C3 = hex => { _col.set(hex); return [_col.r, _col.g, _col.b]; };
 
@@ -332,7 +336,7 @@ function waterLevel(x, z) { const R = regAt(x, z); if (R) return R.wm && regWate
 function regWater(R, x, z) { const u = (x - R.x0) * R.wsc | 0, v = (z - R.z0) * R.wsc | 0; return u >= 0 && v >= 0 && u < R.wmN && v < R.wmN && R.wm[v * R.wmN + u] === 1; }
 async function loadDEM(info) {
   NDX0 = info.x0; NDZ0 = info.z0; NDS = info.step; NDW = info.nx; NDH = info.nz; ND = new Uint16Array(NDW * NDH); NS = new Uint8Array(NDW * NDH);
-  const parts = await Promise.all([loadImage('w/dem0.png'), loadImage('w/dem1.png')]); let row = 0;
+  const parts = await Promise.all([loadImage(DATA + 'w/dem0.png'), loadImage(DATA + 'w/dem1.png')]); let row = 0;
   for (const im of parts) { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' }); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, im.width, im.height).data, o = row * NDW, n = im.width * im.height; for (let i = 0; i < n; i++) { ND[o + i] = d[i * 4] << 8 | d[i * 4 + 1]; NS[o + i] = d[i * 4 + 2]; } row += im.height; }
 }
 
@@ -446,7 +450,7 @@ function updLabels(px, pz, now) {
 
 /* ============================================================ Orte */
 let PLACES = [], PLACE = {};
-function initPlaces(list) { PLACES = list.map(p => Object.assign(p, { found: false, hx: p.hub[0], hz: p.hub[1], ha: p.hub[2], ax: p.hub[3], az: p.hub[4], aa: p.hub[5] })); PLACE = {}; for (const p of PLACES) { PLACE[p.id] = p; addImg(p.img[0], p.img[1], p.img[2], p.img[3], 'z/' + p.id + '.jpg', 0, 3, .22); } }
+function initPlaces(list) { PLACES = list.map(p => Object.assign(p, { found: false, hx: p.hub[0], hz: p.hub[1], ha: p.hub[2], ax: p.hub[3], az: p.hub[4], aa: p.hub[5] })); PLACE = {}; for (const p of PLACES) { PLACE[p.id] = p; addImg(p.img[0], p.img[1], p.img[2], p.img[3], DATA + 'z/' + p.id + '.jpg', 0, 3, .22); } }
 function placeAt(x, z) { let best = null, bd = 1e9; for (const p of PLACES) { const d = Math.hypot(x - p.x, z - p.z); if (d < p.r && d / p.r < bd) { bd = d / p.r; best = p; } } return best; }
 function nearestPlace(x, z, big) { let best = null, bd = 1e18; for (const p of PLACES) { if (big && p.kind === 'village') continue; const d = Math.hypot(x - p.x, z - p.z); if (d < bd) { bd = d; best = p; } } return best; }
 /* ============================================================ Fassaden, Daecher, Materialien */
@@ -798,8 +802,8 @@ function freeRegion(R) { R.dead = true; regions.delete(RK(R.ix, R.iz)); _lr = nu
 let regIndex = new Set(), regBusy = 0;
 function loadRegion(ix, iz) { const k = RK(ix, iz); if (regions.has(k) || !regIndex.has(k)) return regions.get(k) || null;
   const R = { ix, iz, x0: ix * REG, z0: iz * REG, state: 'loading', g: new THREE.Group(), hc: null, dem: null, wm: null, set: null, far: [], parked: [], spawned: false }; regions.set(k, R); regBusy++;
-  const bin = (set, ext) => set.has(k) && typeof DecompressionStream === 'function' ? fetch('r/' + ix + '_' + iz + ext).then(r => r.ok ? r.arrayBuffer() : null).then(b => b && inflate(b)).catch(e => { console.error(e); return null; }) : null;
-  R.promise = Promise.all([getJSON('r/' + ix + '_' + iz + '.json'), bin(regB3, '.b3z'), bin(regTR, '.trz')]).then(q => buildRegion(R, q[0], q[1], q[2])).catch(e => { console.error(e); R.state = 'failed'; }).finally(() => { regBusy--; if (R.state === 'ready' && typeof onRegionReady === 'function') onRegionReady(R); });
+  const bin = (set, ext) => set.has(k) && typeof DecompressionStream === 'function' ? fetch(DATA + 'r/' + ix + '_' + iz + ext).then(r => r.ok ? r.arrayBuffer() : null).then(b => b && inflate(b)).catch(e => { console.error(e); return null; }) : null;
+  R.promise = Promise.all([getJSON(DATA + 'r/' + ix + '_' + iz + '.json'), bin(regB3, '.b3z'), bin(regTR, '.trz')]).then(q => buildRegion(R, q[0], q[1], q[2])).catch(e => { console.error(e); R.state = 'failed'; }).finally(() => { regBusy--; if (R.state === 'ready' && typeof onRegionReady === 'function') onRegionReady(R); });
   return R; }
 function updRegions(px, pz) { const near = 3200, far = 6500;
   for (let ix = Math.floor((px - near) / REG); ix <= Math.floor((px + near) / REG); ix++) for (let iz = Math.floor((pz - near) / REG); iz <= Math.floor((pz + near) / REG); iz++) if (regBusy < 2) loadRegion(ix, iz);
@@ -809,7 +813,7 @@ async function ensureRegions(x, z) { const ps = []; for (let ix = Math.floor((x 
 /* ============================================================ Landesstrassen ausserhalb der Detailgebiete, Tunnelportale */
 const natTiles = new Map(), NT = 51200, NC = 3200; let natIndex = new Set();
 function updNatRoads(px, pz) {
-  for (let i = Math.floor((px - 4500) / NT); i <= Math.floor((px + 4500) / NT); i++) for (let j = Math.floor((pz - 4500) / NT); j <= Math.floor((pz + 4500) / NT); j++) { const k = i + '_' + j; if (!natIndex.has(k) || natTiles.has(k)) continue; const T = { i, j, cells: null, sets: new Map() }; natTiles.set(k, T); getJSON('n/' + k + '.json').then(d => { T.data = d; T.cells = d.cells; }).catch(() => {}); }
+  for (let i = Math.floor((px - 4500) / NT); i <= Math.floor((px + 4500) / NT); i++) for (let j = Math.floor((pz - 4500) / NT); j <= Math.floor((pz + 4500) / NT); j++) { const k = i + '_' + j; if (!natIndex.has(k) || natTiles.has(k)) continue; const T = { i, j, cells: null, sets: new Map() }; natTiles.set(k, T); getJSON(DATA + 'n/' + k + '.json').then(d => { T.data = d; T.cells = d.cells; }).catch(() => {}); }
   for (const T of natTiles.values()) { if (!T.cells) continue;
     for (let cx = Math.floor((px - 3600) / NC); cx <= Math.floor((px + 3600) / NC); cx++) for (let cz = Math.floor((pz - 3600) / NC); cz <= Math.floor((pz + 3600) / NC); cz++) { const k = cx + ',' + cz; if (T.sets.has(k) || !T.cells[k]) continue; T.sets.set(k, makeRoadSet(T.cells[k], T.data.names, T.i * NT, T.j * NT, null)); return; }
     for (const [k, S] of T.sets) { const [cx, cz] = k.split(',').map(Number); if (Math.hypot((cx + .5) * NC - px, (cz + .5) * NC - pz) > 8000) { freeRoadSet(S); T.sets.delete(k); } } }
@@ -1385,11 +1389,11 @@ async function boot(hot) {
   const say = async t => { $('load').textContent = t; await wait(20); };
   try {
     await say('Lade Karten der Schweiz …');
-    const [index, places, nat0] = await Promise.all([getJSON('w/index.json'), getJSON('w/places.json'), loadImage('w/ortho.jpg')]);
-    const im0 = addImg(MAP0.x0, MAP0.z0, MAP0.x0 + MAP0.w, MAP0.z0 + MAP0.h, 'w/ortho.jpg', 4, 0, .5); imgReady(im0, nat0);
-    for (const [i, j] of index.n12) addImg(i * 102400, j * 102400, (i + 1) * 102400, (j + 1) * 102400, 'w/n_' + i + '_' + j + '.jpg', 2, 1, .5);
-    if (!coarse) for (const [i, j] of index.hi || []) addImg(i * 800, j * 800, (i + 1) * 800, (j + 1) * 800, 'z/h_' + i + '_' + j + '.jpg', 0, 4, .16);
-    for (const [i, j] of index.lu) addImg(i * 25600, j * 25600, (i + 1) * 25600, (j + 1) * 25600, 'w/l_' + i + '_' + j + '.jpg', 1, 2, .4);
+    const [index, places, nat0] = await Promise.all([getJSON(DATA + 'w/index.json'), getJSON(DATA + 'w/places.json'), loadImage(DATA + 'w/ortho.jpg')]);
+    const im0 = addImg(MAP0.x0, MAP0.z0, MAP0.x0 + MAP0.w, MAP0.z0 + MAP0.h, DATA + 'w/ortho.jpg', 4, 0, .5); imgReady(im0, nat0);
+    for (const [i, j] of index.n12) addImg(i * 102400, j * 102400, (i + 1) * 102400, (j + 1) * 102400, DATA + 'w/n_' + i + '_' + j + '.jpg', 2, 1, .5);
+    if (!coarse) for (const [i, j] of index.hi || []) addImg(i * 800, j * 800, (i + 1) * 800, (j + 1) * 800, DATA + 'z/h_' + i + '_' + j + '.jpg', 0, 4, .16);
+    for (const [i, j] of index.lu) addImg(i * 25600, j * 25600, (i + 1) * 25600, (j + 1) * 25600, DATA + 'w/l_' + i + '_' + j + '.jpg', 1, 2, .4);
     initPlaces(places);
     await say('Lade Höhenmodell …'); await loadDEM(index.dem);
     regIndex = new Set(index.regions.map(q => RK(q[0], q[1]))); for (const q of index.regions) { if (q[2]) regB3.add(RK(q[0], q[1])); if (q[3]) regTR.add(RK(q[0], q[1])); } natIndex = new Set(index.nat.map(q => q[0] + '_' + q[1])); initPortals(index.tunnels);

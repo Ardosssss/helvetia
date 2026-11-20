@@ -266,11 +266,11 @@ async function boot(hot) {
   const say = async t => { $('load').textContent = t; await wait(20); };
   try {
     await say('Lade Karten der Schweiz …');
-    const [index, places, nat0] = await Promise.all([getJSON('w/index.json'), getJSON('w/places.json'), loadImage('w/ortho.jpg')]);
-    const im0 = addImg(MAP0.x0, MAP0.z0, MAP0.x0 + MAP0.w, MAP0.z0 + MAP0.h, 'w/ortho.jpg', 4, 0, .5); imgReady(im0, nat0);
-    for (const [i, j] of index.n12) addImg(i * 102400, j * 102400, (i + 1) * 102400, (j + 1) * 102400, 'w/n_' + i + '_' + j + '.jpg', 2, 1, .5);
-    if (!coarse) for (const [i, j] of index.hi || []) addImg(i * 800, j * 800, (i + 1) * 800, (j + 1) * 800, 'z/h_' + i + '_' + j + '.jpg', 0, 4, .16);
-    for (const [i, j] of index.lu) addImg(i * 25600, j * 25600, (i + 1) * 25600, (j + 1) * 25600, 'w/l_' + i + '_' + j + '.jpg', 1, 2, .4);
+    const [index, places, nat0] = await Promise.all([getJSON(DATA + 'w/index.json'), getJSON(DATA + 'w/places.json'), loadImage(DATA + 'w/ortho.jpg')]);
+    const im0 = addImg(MAP0.x0, MAP0.z0, MAP0.x0 + MAP0.w, MAP0.z0 + MAP0.h, DATA + 'w/ortho.jpg', 4, 0, .5); imgReady(im0, nat0);
+    for (const [i, j] of index.n12) addImg(i * 102400, j * 102400, (i + 1) * 102400, (j + 1) * 102400, DATA + 'w/n_' + i + '_' + j + '.jpg', 2, 1, .5);
+    if (!coarse) for (const [i, j] of index.hi || []) addImg(i * 800, j * 800, (i + 1) * 800, (j + 1) * 800, DATA + 'z/h_' + i + '_' + j + '.jpg', 0, 4, .16);
+    for (const [i, j] of index.lu) addImg(i * 25600, j * 25600, (i + 1) * 25600, (j + 1) * 25600, DATA + 'w/l_' + i + '_' + j + '.jpg', 1, 2, .4);
     initPlaces(places);
     await say('Lade Höhenmodell …'); await loadDEM(index.dem);
     regIndex = new Set(index.regions.map(q => RK(q[0], q[1]))); for (const q of index.regions) { if (q[2]) regB3.add(RK(q[0], q[1])); if (q[3]) regTR.add(RK(q[0], q[1])); } natIndex = new Set(index.nat.map(q => q[0] + '_' + q[1])); initPortals(index.tunnels);

@@ -14,6 +14,10 @@ const fmtM = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '’');
 const chf = n => 'CHF ' + fmtM(n) + '.–';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const wait = ms => new Promise(r => setTimeout(r, ms));
+/* Die grossen Spieldaten (w/, r/, n/, z/) liegen nicht im Repository, sondern in einem Cloudflare-R2-Bucket (hochgeladen mit pipeline/upload.py).
+   Mit ?data=lokal im Seitenaufruf laedt das Spiel stattdessen die Ordner neben index.html, etwa nach einem eigenen Lauf der Pipeline. */
+const DATA_URL = 'https://pub-fb46c74520864c0ab68934bf502da03f.r2.dev/';
+const DATA = new URLSearchParams(location.search).get('data') === 'lokal' ? '' : DATA_URL;
 const getJSON = async u => { const r = await fetch(u); if (!r.ok) throw new Error(u + ' fehlt (' + r.status + ')'); return r.json(); };
 
 /* ------------------------------------------------------------ Eine Welt im Massstab 1:1 (Meter) */
@@ -67,7 +71,7 @@ function taperBox(w, h, d, tx, tz) { const g = new THREE.BoxGeometry(w, h, d), p
 function canvasTex(w, h, draw, repeat) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; }
 function geo(attrs, idx) { const g = new THREE.BufferGeometry(); for (const k in attrs) g.setAttribute(k, new THREE.BufferAttribute(attrs[k] instanceof Float32Array ? attrs[k] : new Float32Array(attrs[k]), k === 'uv' ? 2 : 3)); if (idx) g.setIndex(idx); return g; }
 function instChunks(geom, mat, items, parent, chk, shadow, list) { const map = new Map(); for (const it of items) { const k = Math.floor(it.x / chk) + ',' + Math.floor(it.z / chk); let a = map.get(k); if (!a) map.set(k, a = []); a.push(it); } for (const arr of map.values()) { let cx = 0, cz = 0; for (const it of arr) { cx += it.x; cz += it.z; } const im = new THREE.InstancedMesh(geom, mat, arr.length); arr.forEach((it, i) => { im.setMatrixAt(i, it.m); if (it.c) im.setColorAt(i, it.c); }); im.instanceMatrix.needsUpdate = true; if (shadow) im.castShadow = true; im.userData.c = { x: cx / arr.length, z: cz / arr.length }; parent.add(im); if (list) list.push(im); } }
-function loadImage(url) { return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('Bild fehlt: ' + url)); im.src = url; }); }
+function loadImage(url) { return new Promise((res, rej) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = () => rej(new Error('Bild fehlt: ' + url)); im.src = url; }); }
 function imgTexture(im) { let src = im; if (Math.max(im.width, im.height) > MAXTEX) { const s = MAXTEX / Math.max(im.width, im.height), c = document.createElement('canvas'); c.width = Math.round(im.width * s); c.height = Math.round(im.height * s); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); src = c; } const t = new THREE.Texture(src); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); t.needsUpdate = true; return t; }
 const C3 = hex => { _col.set(hex); return [_col.r, _col.g, _col.b]; };
 
@@ -112,7 +116,7 @@ function waterLevel(x, z) { const R = regAt(x, z); if (R) return R.wm && regWate
 function regWater(R, x, z) { const u = (x - R.x0) * R.wsc | 0, v = (z - R.z0) * R.wsc | 0; return u >= 0 && v >= 0 && u < R.wmN && v < R.wmN && R.wm[v * R.wmN + u] === 1; }
 async function loadDEM(info) {
   NDX0 = info.x0; NDZ0 = info.z0; NDS = info.step; NDW = info.nx; NDH = info.nz; ND = new Uint16Array(NDW * NDH); NS = new Uint8Array(NDW * NDH);
-  const parts = await Promise.all([loadImage('w/dem0.png'), loadImage('w/dem1.png')]); let row = 0;
+  const parts = await Promise.all([loadImage(DATA + 'w/dem0.png'), loadImage(DATA + 'w/dem1.png')]); let row = 0;
   for (const im of parts) { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' }); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, im.width, im.height).data, o = row * NDW, n = im.width * im.height; for (let i = 0; i < n; i++) { ND[o + i] = d[i * 4] << 8 | d[i * 4 + 1]; NS[o + i] = d[i * 4 + 2]; } row += im.height; }
 }
 

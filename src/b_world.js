@@ -107,6 +107,6 @@ function updLabels(px, pz, now) {
 
 /* ============================================================ Orte */
 let PLACES = [], PLACE = {};
-function initPlaces(list) { PLACES = list.map(p => Object.assign(p, { found: false, hx: p.hub[0], hz: p.hub[1], ha: p.hub[2], ax: p.hub[3], az: p.hub[4], aa: p.hub[5] })); PLACE = {}; for (const p of PLACES) { PLACE[p.id] = p; addImg(p.img[0], p.img[1], p.img[2], p.img[3], 'z/' + p.id + '.jpg', 0, 3, .22); } }
+function initPlaces(list) { PLACES = list.map(p => Object.assign(p, { found: false, hx: p.hub[0], hz: p.hub[1], ha: p.hub[2], ax: p.hub[3], az: p.hub[4], aa: p.hub[5] })); PLACE = {}; for (const p of PLACES) { PLACE[p.id] = p; addImg(p.img[0], p.img[1], p.img[2], p.img[3], DATA + 'z/' + p.id + '.jpg', 0, 3, .22); } }
 function placeAt(x, z) { let best = null, bd = 1e9; for (const p of PLACES) { const d = Math.hypot(x - p.x, z - p.z); if (d < p.r && d / p.r < bd) { bd = d / p.r; best = p; } } return best; }
 function nearestPlace(x, z, big) { let best = null, bd = 1e18; for (const p of PLACES) { if (big && p.kind === 'village') continue; const d = Math.hypot(x - p.x, z - p.z); if (d < bd) { bd = d; best = p; } } return best; }

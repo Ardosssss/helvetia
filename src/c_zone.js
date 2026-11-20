@@ -347,8 +347,8 @@ function freeRegion(R) { R.dead = true; regions.delete(RK(R.ix, R.iz)); _lr = nu
 let regIndex = new Set(), regBusy = 0;
 function loadRegion(ix, iz) { const k = RK(ix, iz); if (regions.has(k) || !regIndex.has(k)) return regions.get(k) || null;
   const R = { ix, iz, x0: ix * REG, z0: iz * REG, state: 'loading', g: new THREE.Group(), hc: null, dem: null, wm: null, set: null, far: [], parked: [], spawned: false }; regions.set(k, R); regBusy++;
-  const bin = (set, ext) => set.has(k) && typeof DecompressionStream === 'function' ? fetch('r/' + ix + '_' + iz + ext).then(r => r.ok ? r.arrayBuffer() : null).then(b => b && inflate(b)).catch(e => { console.error(e); return null; }) : null;
-  R.promise = Promise.all([getJSON('r/' + ix + '_' + iz + '.json'), bin(regB3, '.b3z'), bin(regTR, '.trz')]).then(q => buildRegion(R, q[0], q[1], q[2])).catch(e => { console.error(e); R.state = 'failed'; }).finally(() => { regBusy--; if (R.state === 'ready' && typeof onRegionReady === 'function') onRegionReady(R); });
+  const bin = (set, ext) => set.has(k) && typeof DecompressionStream === 'function' ? fetch(DATA + 'r/' + ix + '_' + iz + ext).then(r => r.ok ? r.arrayBuffer() : null).then(b => b && inflate(b)).catch(e => { console.error(e); return null; }) : null;
+  R.promise = Promise.all([getJSON(DATA + 'r/' + ix + '_' + iz + '.json'), bin(regB3, '.b3z'), bin(regTR, '.trz')]).then(q => buildRegion(R, q[0], q[1], q[2])).catch(e => { console.error(e); R.state = 'failed'; }).finally(() => { regBusy--; if (R.state === 'ready' && typeof onRegionReady === 'function') onRegionReady(R); });
   return R; }
 function updRegions(px, pz) { const near = 3200, far = 6500;
   for (let ix = Math.floor((px - near) / REG); ix <= Math.floor((px + near) / REG); ix++) for (let iz = Math.floor((pz - near) / REG); iz <= Math.floor((pz + near) / REG); iz++) if (regBusy < 2) loadRegion(ix, iz);
@@ -358,7 +358,7 @@ async function ensureRegions(x, z) { const ps = []; for (let ix = Math.floor((x 
 /* ============================================================ Landesstrassen ausserhalb der Detailgebiete, Tunnelportale */
 const natTiles = new Map(), NT = 51200, NC = 3200; let natIndex = new Set();
 function updNatRoads(px, pz) {
-  for (let i = Math.floor((px - 4500) / NT); i <= Math.floor((px + 4500) / NT); i++) for (let j = Math.floor((pz - 4500) / NT); j <= Math.floor((pz + 4500) / NT); j++) { const k = i + '_' + j; if (!natIndex.has(k) || natTiles.has(k)) continue; const T = { i, j, cells: null, sets: new Map() }; natTiles.set(k, T); getJSON('n/' + k + '.json').then(d => { T.data = d; T.cells = d.cells; }).catch(() => {}); }
+  for (let i = Math.floor((px - 4500) / NT); i <= Math.floor((px + 4500) / NT); i++) for (let j = Math.floor((pz - 4500) / NT); j <= Math.floor((pz + 4500) / NT); j++) { const k = i + '_' + j; if (!natIndex.has(k) || natTiles.has(k)) continue; const T = { i, j, cells: null, sets: new Map() }; natTiles.set(k, T); getJSON(DATA + 'n/' + k + '.json').then(d => { T.data = d; T.cells = d.cells; }).catch(() => {}); }
   for (const T of natTiles.values()) { if (!T.cells) continue;
     for (let cx = Math.floor((px - 3600) / NC); cx <= Math.floor((px + 3600) / NC); cx++) for (let cz = Math.floor((pz - 3600) / NC); cz <= Math.floor((pz + 3600) / NC); cz++) { const k = cx + ',' + cz; if (T.sets.has(k) || !T.cells[k]) continue; T.sets.set(k, makeRoadSet(T.cells[k], T.data.names, T.i * NT, T.j * NT, null)); return; }
     for (const [k, S] of T.sets) { const [cx, cz] = k.split(',').map(Number); if (Math.hypot((cx + .5) * NC - px, (cz + .5) * NC - pz) > 8000) { freeRoadSet(S); T.sets.delete(k); } } }

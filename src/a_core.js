@@ -30,6 +30,8 @@ const coarse = matchMedia('(pointer:coarse)').matches;
 const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: !coarse, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, coarse ? 1.5 : 2));
 renderer.autoClear = false;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const MAXTEX = Math.min(renderer.capabilities.maxTextureSize, coarse ? 2048 : 4096);
 const FOGD = 0.000034, VIEW = coarse ? 1300 : 2400;    // Sichtweite fuer Gebaeude
@@ -71,7 +73,21 @@ function withDetail(mat, ru, rv, amp) { mat.onBeforeCompile = sh => { sh.uniform
 const skyU = { top: { value: new THREE.Color(0x3b78c9) }, hor: { value: new THREE.Color(0xbcd7ea) }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color(0xfff0d0) } };
 const sky = new THREE.Mesh(new THREE.SphereGeometry(9000, 24, 12), new THREE.ShaderMaterial({ uniforms: skyU, side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false,
   vertexShader: 'varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-  fragmentShader: 'uniform vec3 top; uniform vec3 hor; uniform vec3 sunDir; uniform vec3 sunCol; varying vec3 vDir; void main(){ vec3 d = normalize(vDir); float h = max(d.y, 0.0); vec3 c = mix(hor, top, pow(h, 0.5)); float s = max(dot(d, sunDir), 0.0); c += sunCol * (pow(s, 700.0) * 3.0 + pow(s, 10.0) * 0.16); gl_FragColor = vec4(c, 1.0);\n#include <colorspace_fragment>\n}' }));
+  fragmentShader: `
+    uniform vec3 top, hor, sunDir, sunCol;
+    varying vec3 vDir;
+    void main() {
+      vec3 d = normalize(vDir);
+      float height = max(d.y, 0.0);
+      float facing = clamp(dot(d, sunDir), 0.0, 1.0);
+      vec3 color = mix(hor, top, pow(height, 0.55));
+      float sunset = 1.0 - smoothstep(0.07, 0.50, abs(sunDir.y));
+      color += sunCol * (0.3 + 1.15 * sunset) * pow(facing, 5.0) * exp(-height * 5.5);
+      color += sunCol * (0.32 * pow(facing, 45.0) + 5.0 * smoothstep(0.99968, 0.99988, facing));
+      gl_FragColor = vec4(color, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }` }));
 sky.renderOrder = -10; sky.frustumCulled = false; bgScene.add(sky);
 
 /* ------------------------------------------------------------ Hoehenmodell: Landesraster 100 m, in Detailgebieten 25 m */

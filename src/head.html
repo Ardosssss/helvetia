@@ -1,14 +1,13 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <title>Helvetia Open World</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
 <style>
 /* Layout: Vollbild-Spielflaeche; HUD als Strassenschilder in den Ecken, Bedienung am unteren Rand */
 :root{
   --bg:#0c1417; --panel:rgba(12,20,23,.78); --line:rgba(255,255,255,.16);
   --fg:#f3f6f4; --muted:#a8b7b3;
   --red:#da291c; --green:#0a7a4a; --blue:#1b5fa9; --yellow:#ffcc00;
-  --display:'Barlow Condensed','Arial Narrow',sans-serif;
-  --body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --display:Arial,sans-serif;
+  --body:Arial,sans-serif;
   color-scheme:dark;
 }
 html,body{height:100%}
@@ -85,6 +84,14 @@ h1 small{display:block;font-size:.3em;font-weight:500;letter-spacing:.22em;color
 #how{margin:0;color:var(--muted);font-size:13px;max-width:62ch}
 .credit{margin:0;color:var(--muted);font-size:11.5px}
 
+#start{padding:clamp(18px,4.6vw,66px);background:linear-gradient(90deg,rgba(23,15,35,.92),rgba(24,18,36,.55) 39%,transparent 78%),linear-gradient(0deg,rgba(13,11,25,.77),transparent 64%)}
+#brand{margin-bottom:10px}
+h1 strong{display:block;font-weight:900;letter-spacing:-.065em;background:linear-gradient(175deg,#fff0ba 15%,#ffb084 52%,#f881b5);background-clip:text;-webkit-background-clip:text;color:transparent}
+h1 small{color:#f9d9ce;font-size:clamp(10px,1.45vw,15px);letter-spacing:.26em}
+#cross{width:43px;height:43px}
+#go{background:#ffab8a;color:#241528;border-radius:4px}
+.card[aria-pressed="true"]{border-color:#ffae91;background:rgba(51,31,47,.85)}
+@media(max-height:520px){#start{padding-block:12px;align-items:flex-start}#startin{gap:6px}#brand{margin-bottom:0}}
 /* Ueberlagerungen: Karte und Garage */
 .ov{position:absolute;inset:0;background:rgba(8,13,15,.94);display:flex;flex-direction:column;gap:10px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
@@ -102,6 +109,20 @@ h1 small{display:block;font-size:.3em;font-weight:500;letter-spacing:.22em;color
 .pi:hover,.pi:active{background:var(--panel)}
 .pi span{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .pi.here{color:var(--yellow)}
+#mapbar-actions,#photo-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#mapbar-actions{justify-content:flex-end}
+#photo-view{margin:auto;width:min(100%,900px);min-height:0;overflow:auto;touch-action:pan-y}
+#photo-view h2{font-size:clamp(22px,5vw,38px);line-height:1.1;margin:0 0 8px}
+#photo-view p{color:var(--muted);margin:0 0 14px}
+#photo-actions a{color:#ffd2bc;text-underline-offset:4px;padding:8px 0}
+#photo-actions{column-gap:20px}
+#street-frame{width:100%;height:clamp(200px,50vh,520px);border:0;margin-top:8px}
+#facade-control{border-top:1px solid var(--line);padding-top:16px;margin-top:22px}
+#facade-control summary{cursor:pointer;color:var(--fg);font-weight:600}
+#facade-control p{margin:8px 0}
+#facade-control select,#facade-control input{font:inherit;max-width:100%}
+#facade-control label{display:block;margin:8px 0}
+#facade-feedback{display:block;color:#ffd2bc;margin-top:6px}
 #garbody{flex:1;min-height:0;overflow-y:auto;touch-action:pan-y;display:flex;flex-direction:column;gap:10px;max-width:760px;width:100%;margin:0 auto}
 #garbody h3{margin:6px 0 0;font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 #garbody p{margin:0;color:var(--muted);font-size:13px}
@@ -129,7 +150,7 @@ h1 small{display:block;font-size:.3em;font-weight:500;letter-spacing:.22em;color
     </div>
     <div id="tr">
       <dl id="stats">
-        <dt>Zeit</dt><dd id="clock">09:30</dd>
+        <dt>Zeit</dt><dd id="clock">17:03</dd>
         <dt>Konto</dt><dd id="money">CHF 0.–</dd>
         <dt>Orte</dt><dd id="found">0/142</dd>
       </dl>
@@ -154,7 +175,7 @@ h1 small{display:block;font-size:.3em;font-weight:500;letter-spacing:.22em;color
   </div></div>
 
   <div id="start"><div id="startin">
-    <div id="brand"><div id="cross"></div><h1>Helvetia<small>Open World Schweiz</small></h1></div>
+    <div id="brand"><div id="cross"></div><h1><strong>Helvetia</strong><small>Open World Schweiz</small></h1></div>
     <div id="pick">
       <button class="card" id="p0" type="button" aria-pressed="true" style="--skin:#e6b594;--top:#1f4e8c"><div class="av"></div><div><b>Charakter 1</b><span id="p0s">Start in Zürich</span></div></button>
       <button class="card" id="p1" type="button" aria-pressed="false" style="--skin:#c98f6a;--top:#b3261e"><div class="av"></div><div><b>Charakter 2</b><span id="p1s">Start in Genf</span></div></button>
@@ -166,11 +187,23 @@ h1 small{display:block;font-size:.3em;font-weight:500;letter-spacing:.22em;color
   </div></div>
 
   <div id="mapov" class="ov" hidden>
-    <div class="ovbar"><div><b>Landeskarte</b><br><span id="maphint">Ort wählen: mit dem Zug dorthin reisen.</span><br><span class="credit">© swisstopo · © OpenStreetMap-Mitwirkende</span></div><button class="tool" id="mapclose" type="button">Schliessen</button></div>
+    <div class="ovbar"><div><b>Landeskarte</b><br><span id="maphint">Ort wählen: mit dem Zug dorthin reisen.</span><br><span class="credit">© swisstopo · © OpenStreetMap-Mitwirkende</span></div><div id="mapbar-actions"><button class="tool" id="photo-toggle" type="button" aria-expanded="false">Ortsansicht</button><button class="tool" id="mapclose" type="button">Schliessen</button></div></div>
     <div id="mapbody">
       <div id="bigwrap"><canvas id="big" width="1400" height="942"></canvas></div>
       <div id="plist"><input id="pfind" type="search" placeholder="Ort suchen …" autocomplete="off" aria-label="Ort suchen"><div id="pitems"></div></div>
     </div>
+    <section id="photo-view" data-embed-key="" hidden aria-labelledby="photo-place">
+      <h2 id="photo-place"></h2><p id="photo-coordinates"></p>
+      <div id="photo-actions"><a id="street-link" target="_blank" rel="noopener noreferrer">Street View öffnen ↗</a><a id="satellite-link" target="_blank" rel="noopener noreferrer">Google-Satellitenbild ↗</a></div>
+      <div id="street-container"></div>
+      <details id="facade-control">
+        <summary>Eigenes Fassadenfoto ausprobieren</summary>
+        <p>Wähle ein frontal aufgenommenes Foto mit zwei Fensterachsen und zwei Stockwerken. Es gilt für alle Gebäude dieses Typs in dieser Spielsitzung.</p>
+        <label>Gebäudetyp <select id="facade-type"><option value="1">Wohnblock</option><option value="2">Büro</option><option value="3">Industrie</option></select></label>
+        <label>Foto auswählen <input type="file" id="facade-file" accept="image/jpeg,image/png,image/webp"></label>
+        <output id="facade-feedback" aria-live="polite"></output>
+      </details>
+    </section>
   </div>
   <div id="garov" class="ov" hidden>
     <div class="ovbar"><div><b>Garage</b><br><span>Fahrzeug wählen: es steht sofort neben dir.</span></div><button class="tool" id="garclose" type="button">Schliessen</button></div>

@@ -30,12 +30,32 @@ Branch wählen, Ordner `/ (root)`.
 
 Auf dem Handy erscheinen Joystick und Knöpfe automatisch.
 
+## Fotos und Spieloptik
+
+Neue Spielstände beginnen in der Abendsonne. Sonnenstand und Tageszeit verändern die Farbe des Himmels, den Dunst über den Bergen, die Fensterbeleuchtung und die Lichtreflexe auf den Seen. Wohnblöcke, Büro- und Industriegebäude nutzen wiederholbare Fototexturen. Die Luftbilder und Dachformen kommen weiterhin von swisstopo.
+
+Über **M → Ortsansicht** öffnest du Street View oder das Google-Satellitenbild an deiner Spielposition. Ein Klick auf einen Ort in der Landeskarte wählt dessen Koordinaten. Für eine eingebettete Strassenansicht kann der Betreiber in `src/head.html` bei `#photo-view` das Attribut `data-embed-key` mit einem für die Spieldomain und die Maps Embed API eingeschränkten Browser-Schlüssel setzen und `./build.sh` ausführen. Die Links funktionieren auch ohne Schlüssel. Street View hängt von der lokalen Abdeckung ab.
+
+Unter **Ortsansicht → Eigenes Fassadenfoto ausprobieren** lässt sich ein eigenes oder freigegebenes Foto direkt im Spiel testen. Die Auswahl gilt für den Gebäudetyp während der aktuellen Sitzung. Für eine dauerhafte Änderung nimmt der Importer eine lokale Bilddatei oder den Freigabelink zu einer öffentlich lesbaren Bilddatei in Google Drive entgegen. Ein frontal aufgenommenes Rechteck mit zwei Fensterachsen und zwei Stockwerken passt auf das vorhandene Gebäuderaster.
+
+```sh
+python3 -m pip install Pillow
+python3 pipeline/fassaden.py wohnblock mein-foto.jpg --crop 100 80 600 500
+python3 pipeline/fassaden.py buero 'https://drive.google.com/file/d/DATEI_ID/view'
+```
+
+Die fertige WebP-Datei (512 × 512 Pixel) liegt in `media/fassaden/`. Mögliche Gebäudetypen sind `wohnblock`, `buero` und `industrie`. Mit dem Einchecken der Datei wird das Foto Teil der Spielwelt. Für die Ortsansicht gelten die [Google-Maps-Richtlinien](https://about.google/brand-resource-center/products-and-services/geo-guidelines/).
+
+### Navigation auf der Minikarte
+
+Eine rosa Linie führt auf befahrbaren Strassen zum nächsten lokalen Kurierpunkt, bei aktivem Auftrag zum Ziel. Sie erscheint, sobald das Ziel höchstens 3,5 km entfernt und über das geladene Strassennetz erreichbar ist. Die Wegsuche berücksichtigt die im Spiel gespeicherten Einbahnstrassen und verbindet Strassenstücke an ihren Knoten. Als Vorbild diente die A*-Suche von [Baritone](https://github.com/cabaletta/baritone). Der Browsercode ist eine eigenständige Implementierung für Helvetia.
+
 ## Aufbau
 
 | Pfad | Inhalt |
 |---|---|
 | `index.html` | fertig gebautes Spiel (aus `src/`, nicht von Hand ändern) |
-| `src/` | Quellcode: `head.html` (Seite, HUD), `a_core.js` (Grundlagen, Höhenmodell), `b_world.js` (Gelände, Luftbilder), `c_zone.js` (Regionen, Gebäude, Strassen), `d_ent.js` (Fahrzeuge, Figuren, Verkehr), `e_game.js` (Ablauf, Karte, Garage, HUD) |
+| `src/` | Quellcode: `head.html` (Seite, HUD), `a_core.js` (Grundlagen, Höhenmodell), `b_world.js` (Gelände, Luftbilder), `c_zone.js` (Regionen, Gebäude, Strassen), `d_ent.js` (Fahrzeuge, Figuren, Verkehr), `navigation.js` (lokale Strassenrouten), `e_game.js` (Ablauf, Karte, Garage, HUD) |
 | `build.sh` | setzt `src/` zu `index.html` zusammen |
 | `w/` | Landesdaten: Höhenmodell 100 m (`dem*.png`), Luftbilder Schweiz (`ortho.jpg`, `n_*.jpg`) und Kanton Luzern (`l_*.jpg`), Ortsliste, Index mit Tunnelportalen |
 | `r/` | 86 Regionen (je 8 × 8 km): `*.json` mit Strassen, Wasser, Bäumen, Höhenraster 25 m und den Gebäuden ohne Vermessungsdach; `*.b3z` mit den echten Dachformen (swissBUILDINGS3D, rund 470 000 Gebäude, komprimiertes Binärformat, siehe `pipeline/regions.py`) |
@@ -79,3 +99,5 @@ Entwicklungsumgebung; ausserhalb davon die Zeile mit `cafile=` anpassen.
 - Luftbilder (SWISSIMAGE), Höhenmodell (swissALTI3D) und Dachformen der Gebäude (swissBUILDINGS3D 3.0): © [swisstopo](https://www.swisstopo.admin.ch).
 - Höhenmodell 100 m: Mapzen Terrain Tiles (u. a. SRTM, EU-DEM).
 - 3D-Bibliothek: [three.js](https://threejs.org) (MIT).
+
+- Fassadenfotos (CC0), für das Spiel zugeschnitten und gekachelt. Wohnblock aus [rubberducks Fototexturen](https://opengameart.org/content/high-res-texture-pack-1), Büro und Industrie aus Scousers [building_hsp](https://opengameart.org/node/34314) und [building_center](https://opengameart.org/node/34291).

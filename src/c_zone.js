@@ -27,6 +27,24 @@ function zFacade(ty) {                                 // Kachel: 2 Fensterachse
   const m = new THREE.MeshLambertMaterial({ map, emissiveMap: em, emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true }); nightMats.push(m); return m;
 }
 const zFac = [0, 1, 2, 3, 4, 5].map(zFacade);
+// Jede Fotokachel deckt zwei Fensterachsen und zwei Stockwerke ab.
+function applyFacadePhoto(type, image) {
+  const material = zFac[type], photo = imgTexture(image);
+  photo.wrapS = photo.wrapT = THREE.RepeatWrapping;
+  material.map.dispose();
+  if (material.emissiveMap) material.emissiveMap.dispose();
+  material.map = photo;
+  // Nur die gezeichneten Fenster passen zur ursprünglichen Leuchtmaske.
+  material.emissiveMap = null;
+  material.emissive.setHex(0x000000);
+  material.needsUpdate = true;
+}
+const facadeChanges = [0, 0, 0, 0];
+for (const [type, file] of [[1, 'wohnblock'], [2, 'buero'], [3, 'industrie']]) {
+  loadImage('media/fassaden/' + file + '.webp').then(image => {
+    if (!facadeChanges[type]) applyFacadePhoto(type, image);
+  }).catch(() => {}); // Die gezeichnete Fassade bleibt bei einem Ladefehler sichtbar.
+}
 // Erdgeschosse: eine Zeile je Bauart, zwei Achsen breit
 const zGround = (() => { const W = 256, RH = 128, cvs = document.createElement('canvas'); cvs.width = W; cvs.height = RH * 6; const g = cvs.getContext('2d');
   for (let t = 0; t < 6; t++) { const y0 = (5 - t) * RH; g.fillStyle = ['#ece8de', '#dedad0', '#cfd5da', '#d9d9d5', '#dcd5c5', '#9a958c'][t]; g.fillRect(0, y0, W, RH);
@@ -44,7 +62,7 @@ const zRoofMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE
 const zTileMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, map: canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#f2f0ec'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 16) { g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(0, y, w, 2.5); g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(0, y + 3, w, 2); g.fillStyle = 'rgba(0,0,0,.09)'; for (let x = (y / 16 % 2) * 6; x < w; x += 12) g.fillRect(x, y + 3, 1.5, 13); } const im = g.getImageData(0, 0, w, h); for (let i = 0; i < w * h; i++) { const n = (h2(i % w, i / w | 0) - .5) * 16; im.data[i * 4] += n; im.data[i * 4 + 1] += n; im.data[i * 4 + 2] += n; } g.putImageData(im, 0, 0); }, true) });
 const zNoise = canvasTex(128, 128, (g, w, h) => { const im = g.createImageData(w, h); for (let i = 0; i < w * h; i++) { const v = 200 + (h2(i % w, (i / w | 0) + 9) * 55 | 0); im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255; } g.putImageData(im, 0, 0); }, true);
 const zRoadMat = [-1, -2, -3].map(f => new THREE.MeshLambertMaterial({ vertexColors: true, map: zNoise, polygonOffset: true, polygonOffsetFactor: f, polygonOffsetUnits: f * 4 }));
-const zWaterMat = new THREE.MeshPhongMaterial({ color: 0x2b6f8f, specular: 0x24343c, shininess: 40, transparent: true, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -.5, polygonOffsetUnits: -2 });
+const zWaterMat = Object.assign(lakeMaterial(), { polygonOffset: true, polygonOffsetFactor: -.5, polygonOffsetUnits: -2 });
 const zPropMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
 const treeMat = new THREE.MeshLambertMaterial({ vertexColors: true }), treeTint = [1, .9, .8, 1.1].map(v => new THREE.Color(v, v, v));
 const zLeafGeo = merge([[new THREE.CylinderGeometry(.25, .36, 3, 4), 0x5b4130, TM(0, 1.5, 0)], [new THREE.IcosahedronGeometry(2.8, coarse ? 0 : 1), 0x4c8a3c, TM(0, 5.4, 0, 1, .95, 1)], [new THREE.IcosahedronGeometry(1.8, 0), 0x5b9a45, TM(1.2, 4.2, .6)]]);

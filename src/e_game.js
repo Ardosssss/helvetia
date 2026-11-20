@@ -1,6 +1,6 @@
 /* ============================================================ Spielablauf in der durchgehenden 1:1-Welt */
 let busy = false, started = false, camYaw = 0, camPitch = .28, camZoom = 1, lastCamInput = -9, camSnap = true, startT = 0, portalCool = 0;
-const state = { money: 200, time: 9.5, mission: null, lastHub: null };
+const state = { money: 200, time: 17.05, mission: null, lastHub: null };
 const fadeOn = txt => { const f = $('fade'); f.textContent = txt || ''; f.classList.add('on'); }, fadeOff = () => $('fade').classList.remove('on');
 function settle(e, isVeh) { if (isVeh) { const g = ground(e.x, e.z, 1e9); e.y = e.t.heli && !e.grounded ? Math.max(e.y, g) : g; e.vy = 0; e.g.position.set(e.x, e.y, e.z); e.awake = true; } else { e.y = ground(e.x, e.z, 1e9); e.vy = 0; e.grounded = true; e.P.g.position.set(e.x, e.y, e.z); } }
 function onRegionReady(R) {
@@ -71,6 +71,7 @@ function drawMini() {
   if (im && im.el) { const s = im.el.width / (im.x1 - im.x0), sz = im.el.height / (im.z1 - im.z0); g.drawImage(im.el, (px - Rm - im.x0) * s, (pz - Rm - im.z0) * sz, 2 * Rm * s, 2 * Rm * sz, 0, 0, Wd, Wd); g.fillStyle = 'rgba(255,255,255,.1)'; g.fillRect(0, 0, Wd, Wd); }
   const X = x => (x - px) * k + Wd / 2, Z = z => (z - pz) * k + Wd / 2, maxC = Rm < 500 ? 5 : Rm < 1400 ? 3 : 2; g.lineCap = g.lineJoin = 'round';
   for (const S of roadSets) { if (S.x0 > px + Rm || S.x1 < px - Rm || S.z0 > pz + Rm || S.z1 < pz - Rm) continue; for (const rd of S.roads) { if (rd.cls > maxC) continue; const P = rd.pts; if (Math.abs(P[0] - px) > Rm + rd.len || Math.abs(P[1] - pz) > Rm + rd.len) continue; g.beginPath(); for (let i = 0; i < rd.n; i++) i ? g.lineTo(X(P[i * 2]), Z(P[i * 2 + 1])) : g.moveTo(X(P[0]), Z(P[1])); g.strokeStyle = rd.cls <= 1 ? '#ffd23f' : '#fff'; g.lineWidth = Math.max(1.6, rd.w * k * .9); g.stroke(); } }
+  if (!(v && v.t.heli)) drawLocalGuide(g, X, Z, px, pz, state.mission ? state.mission.to : placeAt(px, pz) || nearestPlace(px, pz));
   const dot = (x, z, col, r) => { let dx = (x - px) * k, dz = (z - pz) * k; const d = Math.hypot(dx, dz), lim = Wd / 2 - 10; if (d > lim) { dx *= lim / d; dz *= lim / d; } g.beginPath(); g.arc(Wd / 2 + dx, Wd / 2 + dz, r, 0, TAU); g.fillStyle = col; g.fill(); g.strokeStyle = '#111'; g.lineWidth = 2; g.stroke(); };
   for (const o of vehicles) if (!o.driver && Math.abs(o.x - px) < Rm && Math.abs(o.z - pz) < Rm) dot(o.x, o.z, o.t.heli ? '#ff7a59' : '#7fd1ff', 3.5);
   const o = chars[1 - active]; if (Math.hypot(o.x - px, o.z - pz) < 20000) dot(o.x, o.z, '#3aa0ff', 6);
@@ -83,7 +84,7 @@ function drawBig() {
   const X = x => ox + (x - MAP0.x0) * s, Z = z => oz + (z - MAP0.z0) * s; c.toWorld = (u, v) => [(u - ox) / s + MAP0.x0, (v - oz) / s + MAP0.z0];
   g.beginPath(); for (let i = 0; i < BN; i++) i ? g.lineTo(X(BX[i]), Z(BZ[i])) : g.moveTo(X(BX[i]), Z(BZ[i])); g.closePath(); g.strokeStyle = '#da291c'; g.lineWidth = 2.5; g.stroke(); g.textBaseline = 'middle';
   for (const p of PLACES) { const x = X(p.x), z = Z(p.z), vil = p.kind === 'village'; g.beginPath(); g.arc(x, z, p === mapSel ? 9 : p.kind === 'big' ? 7 : vil ? 2.6 : 4.5, 0, TAU); g.fillStyle = p === mapSel ? '#ffcc00' : p.found ? '#fff' : vil ? '#d9e2e4' : '#9fb0b5'; g.fill(); g.lineWidth = vil ? 1 : 2; g.strokeStyle = '#111'; g.stroke(); }
-  for (const p of PLACES) { if ((p.kind === 'village' || (p.lu && p.kind === 'town')) && p !== mapSel) continue; const x = X(p.x), z = Z(p.z); g.font = '600 ' + (p.kind === 'big' || p === mapSel ? 21 : 17) + 'px "Barlow Condensed", sans-serif'; g.lineWidth = 4; g.strokeStyle = 'rgba(0,0,0,.8)'; g.strokeText(p.name, x + 10, z); g.fillStyle = p === mapSel ? '#ffcc00' : '#fff'; g.fillText(p.name, x + 10, z); }
+  for (const p of PLACES) { if ((p.kind === 'village' || (p.lu && p.kind === 'town')) && p !== mapSel) continue; const x = X(p.x), z = Z(p.z); g.font = '600 ' + (p.kind === 'big' || p === mapSel ? 21 : 17) + 'px Arial, sans-serif'; g.lineWidth = 4; g.strokeStyle = 'rgba(0,0,0,.8)'; g.strokeText(p.name, x + 10, z); g.fillStyle = p === mapSel ? '#ffcc00' : '#fff'; g.fillText(p.name, x + 10, z); }
   if (state.mission) { const t = state.mission.to; g.beginPath(); g.arc(X(t.x), Z(t.z), 12, 0, TAU); g.strokeStyle = '#ffcc00'; g.lineWidth = 4; g.stroke(); }
   chars.forEach((ch, i) => { g.beginPath(); g.arc(X(ch.x), Z(ch.z), 8, 0, TAU); g.fillStyle = i === active ? '#da291c' : '#3aa0ff'; g.fill(); g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke(); });
 }
@@ -91,10 +92,60 @@ function fillPlaces() { const bx = $('pitems'), f = $('pfind').value.trim().toLo
   const add = (title, list) => { list = list.filter(p => !f || p.name.toLowerCase().includes(f)).sort((a, b) => a.name.localeCompare(b.name, 'de')); if (!list.length) return; const h = document.createElement('h3'); h.textContent = title + ' (' + list.length + ')'; bx.appendChild(h);
     for (const p of list) { const b = document.createElement('button'); b.type = 'button'; b.className = 'pi' + (p === here ? ' here' : ''); b.innerHTML = esc(p.name) + '<span>' + (p === here ? 'hier' : Math.round(Math.hypot(p.x - ch.x, p.z - ch.z) / 1000) + ' km') + '</span>'; b.addEventListener('click', () => travel(p)); bx.appendChild(b); } };
   add('Städte und Orte', PLACES.filter(p => !p.lu)); add('Kanton Luzern', PLACES.filter(p => p.lu)); }
-function toggleMap(on) { const want = on === undefined ? !mapOpen : on; if (want && (!started || busy)) return; mapOpen = want; if (mapOpen) { toggleGarage(false); mapSel = null; $('maphint').textContent = 'Ort wählen: mit dem Zug dorthin reisen.'; drawBig(); fillPlaces(); } $('mapov').hidden = !mapOpen; }
+function toggleMap(on) { const want = on === undefined ? !mapOpen : on; if (want && (!started || busy)) return; mapOpen = want; setPhotoView(false); if (mapOpen) { toggleGarage(false); mapSel = null; $('maphint').textContent = 'Ort wählen: mit dem Zug dorthin reisen.'; drawBig(); fillPlaces(); } $('mapov').hidden = !mapOpen; }
 $('big').addEventListener('click', e => { const c = $('big'), r = c.getBoundingClientRect(), [wx, wz] = c.toWorld((e.clientX - r.left) / r.width * c.width, (e.clientY - r.top) / r.height * c.height); let best = null, bd = 3200; for (const p of PLACES) { const d = Math.hypot(p.x - wx, p.z - wz) * (p.kind === 'village' ? 1.5 : 1); if (d < bd) { bd = d; best = p; } }
   if (!best) return; if (best === mapSel) { travel(best); return; } mapSel = best; $('maphint').textContent = best.name + ' gewählt. Nochmals antippen, um hinzureisen.'; drawBig(); });
 $('pfind').addEventListener('input', fillPlaces);
+
+function setPhotoView(on) {
+  const panel = $('photo-view'), container = $('street-container');
+  panel.hidden = !on;
+  $('mapbody').hidden = on;
+  $('photo-toggle').setAttribute('aria-expanded', String(on));
+  $('photo-toggle').textContent = on ? 'Zur Karte' : 'Ortsansicht';
+  container.replaceChildren();
+  if (!on) return;
+  const ch = chars[active], at = mapSel || ch.veh || ch;
+  const coordinates = (LAT_C - at.z / KZM).toFixed(6) + ',' + (LON_C + at.x / KXM).toFixed(6);
+  const heading = mapSel ? 0 : (180 - at.a * 180 / Math.PI + 360) % 360;
+  $('photo-place').textContent = mapSel ? mapSel.name : (placeAt(at.x, at.z)?.name || 'Dein Standort');
+  $('photo-coordinates').textContent = (mapSel ? 'Gewählter Ort' : 'Dein Spielstandort') + ' · ' + coordinates.replace(',', ', ');
+  const street = new URLSearchParams({ api: '1', map_action: 'pano', viewpoint: coordinates, heading: Math.round(heading) });
+  const satellite = new URLSearchParams({ api: '1', map_action: 'map', center: coordinates, zoom: '18', basemap: 'satellite' });
+  $('street-link').href = 'https://www.google.com/maps/@?' + street;
+  $('satellite-link').href = 'https://www.google.com/maps/@?' + satellite;
+  if (panel.dataset.embedKey) {
+    const frame = document.createElement('iframe');
+    frame.id = 'street-frame';
+    frame.title = 'Google Street View – ' + $('photo-place').textContent;
+    frame.allowFullscreen = true;
+    frame.referrerPolicy = 'strict-origin-when-cross-origin';
+    frame.src = 'https://www.google.com/maps/embed/v1/streetview?' + new URLSearchParams({
+      key: panel.dataset.embedKey, location: coordinates, heading: Math.round(heading)
+    });
+    container.append(frame);
+  }
+}
+$('photo-toggle').addEventListener('click', () => setPhotoView($('photo-view').hidden));
+$('facade-file').addEventListener('change', async event => {
+  const input = event.currentTarget, file = input.files[0], type = Number($('facade-type').value);
+  const label = $('facade-type').selectedOptions[0].textContent, feedback = $('facade-feedback');
+  if (!file) return;
+  input.value = '';
+  if (file.size > 20 * 1024 * 1024) { feedback.textContent = 'Bitte ein Bild unter 20 MB wählen.'; return; }
+  const version = ++facadeChanges[type], url = URL.createObjectURL(file);
+  try {
+    const image = await loadImage(url);
+    if (facadeChanges[type] !== version) return;
+    const tile = document.createElement('canvas');
+    tile.width = tile.height = 512;
+    tile.getContext('2d').drawImage(image, 0, 0, 512, 512);
+    applyFacadePhoto(type, tile);
+    feedback.textContent = 'Foto für ' + label + ' übernommen.';
+  } catch {
+    feedback.textContent = 'Das Bild konnte nicht gelesen werden. Bitte JPEG, PNG oder WebP wählen.';
+  } finally { URL.revokeObjectURL(url); }
+});
 
 /* ============================================================ Ton */
 let ac = null, eng, engGain, sound = true;
@@ -106,7 +157,7 @@ const thud = () => blip(70, .18, 'square', .12), chime = () => { blip(660, .15, 
 const keys = {};
 const touchUI = () => { $('joy').hidden = false; $('pad').hidden = false; $('keys').hidden = true; };
 const NAV = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-addEventListener('keydown', e => { if (e.target && e.target.tagName === 'INPUT') { if (e.code === 'Escape') toggleMap(false); return; } if (e.repeat) { if (NAV.includes(e.code)) e.preventDefault(); return; } keys[e.code] = true;
+addEventListener('keydown', e => { if (e.target && ['INPUT', 'SELECT', 'SUMMARY'].includes(e.target.tagName)) { if (e.code === 'Escape') toggleMap(false); return; } if (e.repeat) { if (NAV.includes(e.code)) e.preventDefault(); return; } keys[e.code] = true;
   if (e.code === 'KeyE' || e.code === 'KeyF') act(); if (e.code === 'Enter' && !started && !$('go').disabled) begin();
   if (e.code === 'KeyG') toggleGarage(); if (e.code === 'KeyC') switchChar(); if (e.code === 'KeyM') toggleMap(); if (e.code === 'Escape') { toggleMap(false); toggleGarage(false); } if (e.code === 'KeyR') unstick();
   if (NAV.includes(e.code)) e.preventDefault(); });
@@ -148,15 +199,15 @@ function updHud() {
 }
 
 /* ============================================================ Tageszeit und Licht */
-const cA = new THREE.Color(), SKY = { topD: new THREE.Color(0x2f6fc4), topN: new THREE.Color(0x071022), horD: new THREE.Color(0xbfd9ea), horN: new THREE.Color(0x18243a), dusk: new THREE.Color(0xf0a060) };
+const cA = new THREE.Color(), SKY = { twilight: new THREE.Color(0x7767a9), topD: new THREE.Color(0x4486b9), topN: new THREE.Color(0x071022), horD: new THREE.Color(0xbfd9ea), horN: new THREE.Color(0x18243a), dusk: new THREE.Color(0xffa783) };
 function updEnv(target) {
-  const ang = (state.time - 6) / 12 * Math.PI, el = Math.sin(ang), day = sstep(-.1, .28, el), dusk = sstep(.5, .05, Math.abs(el)) * sstep(-.3, -.05, el);
+  const ang = (state.time - 6) / 12 * Math.PI, el = Math.sin(ang), day = sstep(-.1, .28, el), dusk = (1 - sstep(.05, .55, Math.abs(el))) * sstep(-.3, -.05, el);
   const sd = skyU.sunDir.value.set(Math.cos(ang) * .85, Math.max(el, -.15), .42).normalize();
-  skyU.top.value.copy(SKY.topN).lerp(SKY.topD, day); cA.copy(SKY.horN).lerp(SKY.horD, day).lerp(SKY.dusk, dusk * .65); skyU.hor.value.copy(cA); scene.fog.color.copy(cA); bgScene.fog.color.copy(cA);
-  skyU.sunCol.value.setRGB(1, .93, .8).multiplyScalar(day > .02 ? 1 : 0);
-  if (el > -.05) { _v.set(sd.x, Math.max(sd.y, .14), sd.z).normalize(); sun.color.setRGB(1, lerp(.72, .96, day), lerp(.5, .88, day)); sun.intensity = .2 + 2.7 * day; } else { _v.set(-.3, .8, .4).normalize(); sun.color.setRGB(.55, .65, 1); sun.intensity = .55; }
+  skyU.top.value.copy(SKY.topN).lerp(SKY.topD, day).lerp(SKY.twilight, dusk * .82); cA.copy(SKY.horN).lerp(SKY.horD, day).lerp(SKY.dusk, dusk * .9); skyU.hor.value.copy(cA); scene.fog.color.copy(cA); bgScene.fog.color.copy(cA);
+  skyU.sunCol.value.setRGB(1, .92 - .42 * dusk, .76 - .56 * dusk).multiplyScalar(sstep(-.10, .04, el));
+  if (el > -.05) { _v.set(sd.x, Math.max(sd.y, .14), sd.z).normalize(); sun.color.setRGB(1, lerp(.72, .96, day), lerp(.5, .88, day)); sun.color.g *= 1 - .28 * dusk; sun.color.b *= 1 - .48 * dusk; sun.intensity = .25 + 2.7 * day; } else { _v.set(-.3, .8, .4).normalize(); sun.color.setRGB(.55, .65, 1); sun.intensity = .55; }
   sun.position.copy(target).addScaledVector(_v, 520); sun.target.position.copy(target); sun2.position.copy(_v); sun2.color.copy(sun.color); sun2.intensity = sun.intensity;
-  hemi.intensity = hemi2.intensity = .42 + 1.35 * day; const n = 1 - day; for (const m of nightMats) m.emissiveIntensity = n * .95;
+  hemi.intensity = hemi2.intensity = .42 + 1.35 * day; const n = Math.max(1 - day, dusk * .42); for (const m of nightMats) m.emissiveIntensity = n * .95;
 }
 
 /* ============================================================ Schleife */
@@ -187,6 +238,7 @@ function frame(now) {
   if (now - strT > .25) { strT = now; stream(px, pz, py); }
   updTerrain(false);
   if (!busy) { updTraffic(dt, px, pz, run ? v : null); updPeds(dt, px, pz, run && v && !v.t.heli ? v : null); if (run) updMission(px, pz, now); }
+  waterTime.value = now % 4096;
   updClouds(dt); updLabels(px, pz, now);
   let dist, th;
   if (!started) { menuAng += dt * .1; camYaw = menuAng; dist = 190; th = 28; camPitch = .4; }

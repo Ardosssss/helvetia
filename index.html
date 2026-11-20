@@ -1,14 +1,13 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:dark;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}*{box-sizing:border-box}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><meta name="claude:viewport-fit-sides" content="cover">
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:dark;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}*{box-sizing:border-box}body{margin:0;font:14px Arial,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><meta name="claude:viewport-fit-sides" content="cover">
 <title>Helvetia Open World</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
 <style>
 /* Layout: Vollbild-Spielflaeche; HUD als Strassenschilder in den Ecken, Bedienung am unteren Rand */
 :root{
   --bg:#0c1417; --panel:rgba(12,20,23,.78); --line:rgba(255,255,255,.16);
   --fg:#f3f6f4; --muted:#a8b7b3;
   --red:#da291c; --green:#0a7a4a; --blue:#1b5fa9; --yellow:#ffcc00;
-  --display:'Barlow Condensed','Arial Narrow',sans-serif;
-  --body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --display:Arial,sans-serif;
+  --body:Arial,sans-serif;
   color-scheme:dark;
 }
 html,body{height:100%}
@@ -85,6 +84,14 @@ h1 small{display:block;font-size:.3em;font-weight:500;letter-spacing:.22em;color
 #how{margin:0;color:var(--muted);font-size:13px;max-width:62ch}
 .credit{margin:0;color:var(--muted);font-size:11.5px}
 
+#start{padding:clamp(18px,4.6vw,66px);background:linear-gradient(90deg,rgba(23,15,35,.92),rgba(24,18,36,.55) 39%,transparent 78%),linear-gradient(0deg,rgba(13,11,25,.77),transparent 64%)}
+#brand{margin-bottom:10px}
+h1 strong{display:block;font-weight:900;letter-spacing:-.065em;background:linear-gradient(175deg,#fff0ba 15%,#ffb084 52%,#f881b5);background-clip:text;-webkit-background-clip:text;color:transparent}
+h1 small{color:#f9d9ce;font-size:clamp(10px,1.45vw,15px);letter-spacing:.26em}
+#cross{width:43px;height:43px}
+#go{background:#ffab8a;color:#241528;border-radius:4px}
+.card[aria-pressed="true"]{border-color:#ffae91;background:rgba(51,31,47,.85)}
+@media(max-height:520px){#start{padding-block:12px;align-items:flex-start}#startin{gap:6px}#brand{margin-bottom:0}}
 /* Ueberlagerungen: Karte und Garage */
 .ov{position:absolute;inset:0;background:rgba(8,13,15,.94);display:flex;flex-direction:column;gap:10px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
@@ -102,6 +109,20 @@ h1 small{display:block;font-size:.3em;font-weight:500;letter-spacing:.22em;color
 .pi:hover,.pi:active{background:var(--panel)}
 .pi span{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .pi.here{color:var(--yellow)}
+#mapbar-actions,#photo-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#mapbar-actions{justify-content:flex-end}
+#photo-view{margin:auto;width:min(100%,900px);min-height:0;overflow:auto;touch-action:pan-y}
+#photo-view h2{font-size:clamp(22px,5vw,38px);line-height:1.1;margin:0 0 8px}
+#photo-view p{color:var(--muted);margin:0 0 14px}
+#photo-actions a{color:#ffd2bc;text-underline-offset:4px;padding:8px 0}
+#photo-actions{column-gap:20px}
+#street-frame{width:100%;height:clamp(200px,50vh,520px);border:0;margin-top:8px}
+#facade-control{border-top:1px solid var(--line);padding-top:16px;margin-top:22px}
+#facade-control summary{cursor:pointer;color:var(--fg);font-weight:600}
+#facade-control p{margin:8px 0}
+#facade-control select,#facade-control input{font:inherit;max-width:100%}
+#facade-control label{display:block;margin:8px 0}
+#facade-feedback{display:block;color:#ffd2bc;margin-top:6px}
 #garbody{flex:1;min-height:0;overflow-y:auto;touch-action:pan-y;display:flex;flex-direction:column;gap:10px;max-width:760px;width:100%;margin:0 auto}
 #garbody h3{margin:6px 0 0;font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 #garbody p{margin:0;color:var(--muted);font-size:13px}
@@ -129,7 +150,7 @@ h1 small{display:block;font-size:.3em;font-weight:500;letter-spacing:.22em;color
     </div>
     <div id="tr">
       <dl id="stats">
-        <dt>Zeit</dt><dd id="clock">09:30</dd>
+        <dt>Zeit</dt><dd id="clock">17:03</dd>
         <dt>Konto</dt><dd id="money">CHF 0.–</dd>
         <dt>Orte</dt><dd id="found">0/142</dd>
       </dl>
@@ -154,7 +175,7 @@ h1 small{display:block;font-size:.3em;font-weight:500;letter-spacing:.22em;color
   </div></div>
 
   <div id="start"><div id="startin">
-    <div id="brand"><div id="cross"></div><h1>Helvetia<small>Open World Schweiz</small></h1></div>
+    <div id="brand"><div id="cross"></div><h1><strong>Helvetia</strong><small>Open World Schweiz</small></h1></div>
     <div id="pick">
       <button class="card" id="p0" type="button" aria-pressed="true" style="--skin:#e6b594;--top:#1f4e8c"><div class="av"></div><div><b>Charakter 1</b><span id="p0s">Start in Zürich</span></div></button>
       <button class="card" id="p1" type="button" aria-pressed="false" style="--skin:#c98f6a;--top:#b3261e"><div class="av"></div><div><b>Charakter 2</b><span id="p1s">Start in Genf</span></div></button>
@@ -166,11 +187,23 @@ h1 small{display:block;font-size:.3em;font-weight:500;letter-spacing:.22em;color
   </div></div>
 
   <div id="mapov" class="ov" hidden>
-    <div class="ovbar"><div><b>Landeskarte</b><br><span id="maphint">Ort wählen: mit dem Zug dorthin reisen.</span><br><span class="credit">© swisstopo · © OpenStreetMap-Mitwirkende</span></div><button class="tool" id="mapclose" type="button">Schliessen</button></div>
+    <div class="ovbar"><div><b>Landeskarte</b><br><span id="maphint">Ort wählen: mit dem Zug dorthin reisen.</span><br><span class="credit">© swisstopo · © OpenStreetMap-Mitwirkende</span></div><div id="mapbar-actions"><button class="tool" id="photo-toggle" type="button" aria-expanded="false">Ortsansicht</button><button class="tool" id="mapclose" type="button">Schliessen</button></div></div>
     <div id="mapbody">
       <div id="bigwrap"><canvas id="big" width="1400" height="942"></canvas></div>
       <div id="plist"><input id="pfind" type="search" placeholder="Ort suchen …" autocomplete="off" aria-label="Ort suchen"><div id="pitems"></div></div>
     </div>
+    <section id="photo-view" data-embed-key="" hidden aria-labelledby="photo-place">
+      <h2 id="photo-place"></h2><p id="photo-coordinates"></p>
+      <div id="photo-actions"><a id="street-link" target="_blank" rel="noopener noreferrer">Street View öffnen ↗</a><a id="satellite-link" target="_blank" rel="noopener noreferrer">Google-Satellitenbild ↗</a></div>
+      <div id="street-container"></div>
+      <details id="facade-control">
+        <summary>Eigenes Fassadenfoto ausprobieren</summary>
+        <p>Wähle ein frontal aufgenommenes Foto mit zwei Fensterachsen und zwei Stockwerken. Es gilt für alle Gebäude dieses Typs in dieser Spielsitzung.</p>
+        <label>Gebäudetyp <select id="facade-type"><option value="1">Wohnblock</option><option value="2">Büro</option><option value="3">Industrie</option></select></label>
+        <label>Foto auswählen <input type="file" id="facade-file" accept="image/jpeg,image/png,image/webp"></label>
+        <output id="facade-feedback" aria-live="polite"></output>
+      </details>
+    </section>
   </div>
   <div id="garov" class="ov" hidden>
     <div class="ovbar"><div><b>Garage</b><br><span>Fahrzeug wählen: es steht sofort neben dir.</span></div><button class="tool" id="garclose" type="button">Schliessen</button></div>
@@ -217,6 +250,8 @@ const coarse = matchMedia('(pointer:coarse)').matches;
 const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: !coarse, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, coarse ? 1.5 : 2));
 renderer.autoClear = false;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const MAXTEX = Math.min(renderer.capabilities.maxTextureSize, coarse ? 2048 : 4096);
 const FOGD = 0.000034, VIEW = coarse ? 1300 : 2400;    // Sichtweite fuer Gebaeude
@@ -258,7 +293,21 @@ function withDetail(mat, ru, rv, amp) { mat.onBeforeCompile = sh => { sh.uniform
 const skyU = { top: { value: new THREE.Color(0x3b78c9) }, hor: { value: new THREE.Color(0xbcd7ea) }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color(0xfff0d0) } };
 const sky = new THREE.Mesh(new THREE.SphereGeometry(9000, 24, 12), new THREE.ShaderMaterial({ uniforms: skyU, side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false,
   vertexShader: 'varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-  fragmentShader: 'uniform vec3 top; uniform vec3 hor; uniform vec3 sunDir; uniform vec3 sunCol; varying vec3 vDir; void main(){ vec3 d = normalize(vDir); float h = max(d.y, 0.0); vec3 c = mix(hor, top, pow(h, 0.5)); float s = max(dot(d, sunDir), 0.0); c += sunCol * (pow(s, 700.0) * 3.0 + pow(s, 10.0) * 0.16); gl_FragColor = vec4(c, 1.0);\n#include <colorspace_fragment>\n}' }));
+  fragmentShader: `
+    uniform vec3 top, hor, sunDir, sunCol;
+    varying vec3 vDir;
+    void main() {
+      vec3 d = normalize(vDir);
+      float height = max(d.y, 0.0);
+      float facing = clamp(dot(d, sunDir), 0.0, 1.0);
+      vec3 color = mix(hor, top, pow(height, 0.55));
+      float sunset = 1.0 - smoothstep(0.07, 0.50, abs(sunDir.y));
+      color += sunCol * (0.3 + 1.15 * sunset) * pow(facing, 5.0) * exp(-height * 5.5);
+      color += sunCol * (0.32 * pow(facing, 45.0) + 5.0 * smoothstep(0.99968, 0.99988, facing));
+      gl_FragColor = vec4(color, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }` }));
 sky.renderOrder = -10; sky.frustumCulled = false; bgScene.add(sky);
 
 /* ------------------------------------------------------------ Hoehenmodell: Landesraster 100 m, in Detailgebieten 25 m */
@@ -304,7 +353,27 @@ function roofMatOf(im) { if (!im.roofMat) { im.roofMat = new THREE.MeshLambertMa
 /* ============================================================ Gelaende als Viererbaum: 25 m nah, bis 6.4 km in der Ferne */
 const TS = [800, 3200, 12800, 51200, 204800], TN = 32, SPLIT = [0, coarse ? .5 : .8, .75, .6, 1.25], SKIRT = [10, 45, 160, 500, 1200];
 const tnodes = new Map(); let tFrame = 0, tBudget = 0;
-const natWaterMat = new THREE.MeshPhongMaterial({ color: 0x2a7090, specular: 0x24343c, shininess: 40, transparent: true, opacity: 0.9 });
+const waterTime = { value: 0 };
+function lakeMaterial() {
+  const mat = new THREE.MeshPhongMaterial({
+    color: 0x276979, specular: 0xc3d6d6, shininess: 76, transparent: true, opacity: 0.91
+  });
+  mat.onBeforeCompile = shader => {
+    shader.uniforms.rippleTime = waterTime;
+    shader.vertexShader = 'varying vec2 waterXZ;\n' + shader.vertexShader.replace(
+      '#include <project_vertex>', '#include <project_vertex>\nwaterXZ = (modelMatrix * vec4(transformed, 1.0)).xz;'
+    );
+    shader.fragmentShader = 'uniform float rippleTime; varying vec2 waterXZ;\n' + shader.fragmentShader.replace(
+      '#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      float t = rippleTime;
+      vec2 slope = vec2(sin(dot(waterXZ, vec2(.42,.21)) + t * 1.4), cos(dot(waterXZ, vec2(.16,-.34)) - t));
+      float detail = 1.0 - smoothstep(80.0, 550.0, length(vViewPosition));
+      normal = normalize(normal + mat3(viewMatrix) * vec3(slope.x, 0., slope.y) * .095 * detail);`
+    );
+  };
+  return mat;
+}
+const natWaterMat = lakeMaterial();
 const tIndex = (() => { const V = TN + 1, idx = []; for (let j = 0; j < TN; j++) for (let i = 0; i < TN; i++) { const a = j * V + i, b = a + 1, c = a + V, d = c + 1; idx.push(a, c, b, b, c, d); }
   const S0 = V * V, ring = []; for (let i = 0; i < V; i++) ring.push(i); for (let j = 1; j < V; j++) ring.push(j * V + TN); for (let i = TN - 1; i >= 0; i--) ring.push(TN * V + i); for (let j = TN - 1; j >= 1; j--) ring.push(j * V);
   for (let k = 0; k < ring.length; k++) { const a = ring[k], b = ring[(k + 1) % ring.length], c = S0 + k, d = S0 + (k + 1) % ring.length; idx.push(a, b, c, b, d, c); }
@@ -357,7 +426,7 @@ function buildClouds() {
 function updClouds(dt) { const im = clouds.mesh; for (let i = 0; i < clouds.length; i++) { const c = clouds[i]; c.x += dt * 9; let dx = c.x - camX, dz = c.z - camZ; dx = ((dx + 30000) % 60000 + 60000) % 60000 - 30000; dz = ((dz + 30000) % 60000 + 60000) % 60000 - 30000; _mat.compose(_v.set(camX + dx, c.y, camZ + dz), _q.identity(), _s.set(c.sx, c.sy, c.sz)); im.setMatrixAt(i, _mat); } im.instanceMatrix.needsUpdate = true; }
 const labels = []; let labelT = 0;
 function buildLabels() { for (let i = 0; i < 10; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true, fog: false })); s.visible = false; s.renderOrder = 50; scene.add(s); labels.push(s); } }
-function labelTex(p) { if (!p.tex) { p.tex = canvasTex(320, 80, g => { g.font = '600 44px "Barlow Condensed", "Arial Narrow", sans-serif'; const w = Math.min(300, g.measureText(p.name).width + 36), x = (320 - w) / 2; g.fillStyle = '#f3f6f4'; g.strokeStyle = '#111'; g.lineWidth = 5; g.beginPath(); g.roundRect(x, 8, w, 62, 9); g.fill(); g.stroke(); g.fillStyle = '#111'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(p.name, 160, 41, 280); }); } return p.tex; }
+function labelTex(p) { if (!p.tex) { p.tex = canvasTex(320, 80, g => { g.font = '600 44px Arial, sans-serif'; const w = Math.min(300, g.measureText(p.name).width + 36), x = (320 - w) / 2; g.fillStyle = '#f3f6f4'; g.strokeStyle = '#111'; g.lineWidth = 5; g.beginPath(); g.roundRect(x, 8, w, 62, 9); g.fill(); g.stroke(); g.fillStyle = '#111'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(p.name, 160, 41, 280); }); } return p.tex; }
 function updLabels(px, pz, now) {
   if (now - labelT > .5) { labelT = now; const near = PLACES.map(p => [Math.hypot(p.x - px, p.z - pz), p]).filter(a => a[0] < 9000 && a[0] > a[1].r * .7).sort((a, b) => a[0] - b[0]).slice(0, labels.length);
     labels.forEach((s, i) => { const a = near[i]; s.visible = !!a; if (a) { const p = a[1]; if (s.material.map !== labelTex(p)) { s.material.map = p.tex; s.material.needsUpdate = true; } s.position.set(p.x, H(p.x, p.z) + 60 + a[0] * .03, p.z); } }); }
@@ -398,6 +467,24 @@ function zFacade(ty) {                                 // Kachel: 2 Fensterachse
   const m = new THREE.MeshLambertMaterial({ map, emissiveMap: em, emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true }); nightMats.push(m); return m;
 }
 const zFac = [0, 1, 2, 3, 4, 5].map(zFacade);
+// Jede Fotokachel deckt zwei Fensterachsen und zwei Stockwerke ab.
+function applyFacadePhoto(type, image) {
+  const material = zFac[type], photo = imgTexture(image);
+  photo.wrapS = photo.wrapT = THREE.RepeatWrapping;
+  material.map.dispose();
+  if (material.emissiveMap) material.emissiveMap.dispose();
+  material.map = photo;
+  // Nur die gezeichneten Fenster passen zur ursprünglichen Leuchtmaske.
+  material.emissiveMap = null;
+  material.emissive.setHex(0x000000);
+  material.needsUpdate = true;
+}
+const facadeChanges = [0, 0, 0, 0];
+for (const [type, file] of [[1, 'wohnblock'], [2, 'buero'], [3, 'industrie']]) {
+  loadImage('media/fassaden/' + file + '.webp').then(image => {
+    if (!facadeChanges[type]) applyFacadePhoto(type, image);
+  }).catch(() => {}); // Die gezeichnete Fassade bleibt bei einem Ladefehler sichtbar.
+}
 // Erdgeschosse: eine Zeile je Bauart, zwei Achsen breit
 const zGround = (() => { const W = 256, RH = 128, cvs = document.createElement('canvas'); cvs.width = W; cvs.height = RH * 6; const g = cvs.getContext('2d');
   for (let t = 0; t < 6; t++) { const y0 = (5 - t) * RH; g.fillStyle = ['#ece8de', '#dedad0', '#cfd5da', '#d9d9d5', '#dcd5c5', '#9a958c'][t]; g.fillRect(0, y0, W, RH);
@@ -415,7 +502,7 @@ const zRoofMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE
 const zTileMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, map: canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#f2f0ec'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 16) { g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(0, y, w, 2.5); g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(0, y + 3, w, 2); g.fillStyle = 'rgba(0,0,0,.09)'; for (let x = (y / 16 % 2) * 6; x < w; x += 12) g.fillRect(x, y + 3, 1.5, 13); } const im = g.getImageData(0, 0, w, h); for (let i = 0; i < w * h; i++) { const n = (h2(i % w, i / w | 0) - .5) * 16; im.data[i * 4] += n; im.data[i * 4 + 1] += n; im.data[i * 4 + 2] += n; } g.putImageData(im, 0, 0); }, true) });
 const zNoise = canvasTex(128, 128, (g, w, h) => { const im = g.createImageData(w, h); for (let i = 0; i < w * h; i++) { const v = 200 + (h2(i % w, (i / w | 0) + 9) * 55 | 0); im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255; } g.putImageData(im, 0, 0); }, true);
 const zRoadMat = [-1, -2, -3].map(f => new THREE.MeshLambertMaterial({ vertexColors: true, map: zNoise, polygonOffset: true, polygonOffsetFactor: f, polygonOffsetUnits: f * 4 }));
-const zWaterMat = new THREE.MeshPhongMaterial({ color: 0x2b6f8f, specular: 0x24343c, shininess: 40, transparent: true, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -.5, polygonOffsetUnits: -2 });
+const zWaterMat = Object.assign(lakeMaterial(), { polygonOffset: true, polygonOffsetFactor: -.5, polygonOffsetUnits: -2 });
 const zPropMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
 const treeMat = new THREE.MeshLambertMaterial({ vertexColors: true }), treeTint = [1, .9, .8, 1.1].map(v => new THREE.Color(v, v, v));
 const zLeafGeo = merge([[new THREE.CylinderGeometry(.25, .36, 3, 4), 0x5b4130, TM(0, 1.5, 0)], [new THREE.IcosahedronGeometry(2.8, coarse ? 0 : 1), 0x4c8a3c, TM(0, 5.4, 0, 1, .95, 1)], [new THREE.IcosahedronGeometry(1.8, 0), 0x5b9a45, TM(1.2, 4.2, .6)]]);
@@ -870,9 +957,103 @@ function updPeds(dt, px, pz, pv) {
     p.P.g.position.set(p.x, p.y, p.z); p.P.g.rotation.set(0, Math.atan2(_ep.tx * p.dir, _ep.tz * p.dir), 0);
   }
 }
+// A* wie bei Baritone, hier auf den gerichteten Strassenstücken der geladenen Regionen.
+// Start und Ziel liegen oft mitten auf einer Strasse.
+function localRoadRoute(start, goal) {
+  if (!start || !goal) return [];
+  const finish = Symbol('Ziel'), pending = [], best = new Map(), previous = new Map();
+  function offer(key, cost, estimate, parent, rd, from, to) {
+    if (cost >= (best.get(key) ?? Infinity)) return;
+    best.set(key, cost);
+    previous.set(key, { parent, rd, from, to });
+    const entry = { key, cost, rank: cost + estimate };
+    let i = pending.length;
+    pending.push(entry);
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (entry.rank >= pending[p].rank) break;
+      pending[i] = pending[p];
+      i = p;
+    }
+    pending[i] = entry;
+  }
+  function pop() {
+    const first = pending[0], last = pending.pop();
+    if (pending.length) {
+      let i = 0;
+      while (2 * i + 1 < pending.length) {
+        let child = 2 * i + 1;
+        if (child + 1 < pending.length && pending[child + 1].rank < pending[child].rank) child++;
+        if (last.rank <= pending[child].rank) break;
+        pending[i] = pending[child];
+        i = child;
+      }
+      pending[i] = last;
+    }
+    return first;
+  }
+  function toEnd(rd, forward, from, cost, parent) {
+    const end = forward ? rd.len : 0, j = forward ? rd.pts.length - 2 : 0;
+    const estimate = Math.hypot(rd.pts[j] - goal.x, rd.pts[j + 1] - goal.z);
+    offer(forward ? rd.k1 : rd.k0, cost + Math.abs(end - from), estimate, parent, rd, from, end);
+  }
+  if (start.rd === goal.rd && (start.s <= goal.s || !(start.rd.fl & 2))) {
+    return [{ rd: start.rd, from: start.s, to: goal.s }];
+  }
+  toEnd(start.rd, true, start.s, 0, null);
+  if (!(start.rd.fl & 2) || start.s === 0) toEnd(start.rd, false, start.s, 0, null);
+  for (let visited = 0; pending.length && visited < 5000;) {
+    const node = pop();
+    if (node.cost !== best.get(node.key)) continue;
+    if (node.key === finish) {
+      const path = [];
+      for (let key = finish; key !== null;) {
+        const step = previous.get(key);
+        path.push(step);
+        key = step.parent;
+      }
+      return path.reverse();
+    }
+    visited++;
+    if (node.key === goal.rd.k0) offer(finish, node.cost + goal.s, 0, node.key, goal.rd, 0, goal.s);
+    if (node.key === goal.rd.k1 && (!(goal.rd.fl & 2) || goal.s === goal.rd.len)) {
+      offer(finish, node.cost + goal.rd.len - goal.s, 0, node.key, goal.rd, goal.rd.len, goal.s);
+    }
+    for (const { rd, end } of nodeOpts(node.key)) {
+      if (rd.cls <= 5 && (!end || !(rd.fl & 2))) toEnd(rd, !end, end ? rd.len : 0, node.cost, node.key);
+    }
+  }
+  return [];
+}
+
+let guide = null;
+function drawLocalGuide(g, X, Z, px, pz, target) {
+  // Lange Kurieraufträge behalten ihren Zielpunkt, bis das Zielgebiet geladen ist.
+  if (!target || Math.hypot(px - target.hx, pz - target.hz) > 3500) { guide = null; return; }
+  const now = performance.now();
+  if (!guide || guide.target !== target || (now - guide.time > 1200 &&
+      (Math.hypot(px - guide.x, pz - guide.z) > 22 || guide.sets !== roadSets.size || !guide.path.length && now - guide.time > 5000))) {
+    const path = localRoadRoute(nearRoad(px, pz, 5, 75), nearRoad(target.hx, target.hz, 5, 80));
+    guide = { x: px, z: pz, target, time: now, sets: roadSets.size, path };
+  }
+  if (!guide.path.length) return;
+  const point = {};
+  g.beginPath();
+  guide.path.forEach(({ rd, from, to }, i) => {
+    roadPos(rd, from, point);
+    if (i === 0) g.moveTo(X(point.x), Z(point.z));
+    for (let j = from <= to ? 1 : rd.n - 2; j > 0 && j < rd.n - 1; j += from <= to ? 1 : -1) {
+      if (rd.cum[j] > Math.min(from, to) && rd.cum[j] < Math.max(from, to)) g.lineTo(X(rd.pts[2*j]), Z(rd.pts[2*j+1]));
+    }
+    roadPos(rd, to, point);
+    g.lineTo(X(point.x), Z(point.z));
+  });
+  g.strokeStyle = '#2b1734'; g.lineWidth = 8; g.stroke();
+  g.strokeStyle = '#ff83c6'; g.lineWidth = 4; g.stroke();
+}
 /* ============================================================ Spielablauf in der durchgehenden 1:1-Welt */
 let busy = false, started = false, camYaw = 0, camPitch = .28, camZoom = 1, lastCamInput = -9, camSnap = true, startT = 0, portalCool = 0;
-const state = { money: 200, time: 9.5, mission: null, lastHub: null };
+const state = { money: 200, time: 17.05, mission: null, lastHub: null };
 const fadeOn = txt => { const f = $('fade'); f.textContent = txt || ''; f.classList.add('on'); }, fadeOff = () => $('fade').classList.remove('on');
 function settle(e, isVeh) { if (isVeh) { const g = ground(e.x, e.z, 1e9); e.y = e.t.heli && !e.grounded ? Math.max(e.y, g) : g; e.vy = 0; e.g.position.set(e.x, e.y, e.z); e.awake = true; } else { e.y = ground(e.x, e.z, 1e9); e.vy = 0; e.grounded = true; e.P.g.position.set(e.x, e.y, e.z); } }
 function onRegionReady(R) {
@@ -943,6 +1124,7 @@ function drawMini() {
   if (im && im.el) { const s = im.el.width / (im.x1 - im.x0), sz = im.el.height / (im.z1 - im.z0); g.drawImage(im.el, (px - Rm - im.x0) * s, (pz - Rm - im.z0) * sz, 2 * Rm * s, 2 * Rm * sz, 0, 0, Wd, Wd); g.fillStyle = 'rgba(255,255,255,.1)'; g.fillRect(0, 0, Wd, Wd); }
   const X = x => (x - px) * k + Wd / 2, Z = z => (z - pz) * k + Wd / 2, maxC = Rm < 500 ? 5 : Rm < 1400 ? 3 : 2; g.lineCap = g.lineJoin = 'round';
   for (const S of roadSets) { if (S.x0 > px + Rm || S.x1 < px - Rm || S.z0 > pz + Rm || S.z1 < pz - Rm) continue; for (const rd of S.roads) { if (rd.cls > maxC) continue; const P = rd.pts; if (Math.abs(P[0] - px) > Rm + rd.len || Math.abs(P[1] - pz) > Rm + rd.len) continue; g.beginPath(); for (let i = 0; i < rd.n; i++) i ? g.lineTo(X(P[i * 2]), Z(P[i * 2 + 1])) : g.moveTo(X(P[0]), Z(P[1])); g.strokeStyle = rd.cls <= 1 ? '#ffd23f' : '#fff'; g.lineWidth = Math.max(1.6, rd.w * k * .9); g.stroke(); } }
+  if (!(v && v.t.heli)) drawLocalGuide(g, X, Z, px, pz, state.mission ? state.mission.to : placeAt(px, pz) || nearestPlace(px, pz));
   const dot = (x, z, col, r) => { let dx = (x - px) * k, dz = (z - pz) * k; const d = Math.hypot(dx, dz), lim = Wd / 2 - 10; if (d > lim) { dx *= lim / d; dz *= lim / d; } g.beginPath(); g.arc(Wd / 2 + dx, Wd / 2 + dz, r, 0, TAU); g.fillStyle = col; g.fill(); g.strokeStyle = '#111'; g.lineWidth = 2; g.stroke(); };
   for (const o of vehicles) if (!o.driver && Math.abs(o.x - px) < Rm && Math.abs(o.z - pz) < Rm) dot(o.x, o.z, o.t.heli ? '#ff7a59' : '#7fd1ff', 3.5);
   const o = chars[1 - active]; if (Math.hypot(o.x - px, o.z - pz) < 20000) dot(o.x, o.z, '#3aa0ff', 6);
@@ -955,7 +1137,7 @@ function drawBig() {
   const X = x => ox + (x - MAP0.x0) * s, Z = z => oz + (z - MAP0.z0) * s; c.toWorld = (u, v) => [(u - ox) / s + MAP0.x0, (v - oz) / s + MAP0.z0];
   g.beginPath(); for (let i = 0; i < BN; i++) i ? g.lineTo(X(BX[i]), Z(BZ[i])) : g.moveTo(X(BX[i]), Z(BZ[i])); g.closePath(); g.strokeStyle = '#da291c'; g.lineWidth = 2.5; g.stroke(); g.textBaseline = 'middle';
   for (const p of PLACES) { const x = X(p.x), z = Z(p.z), vil = p.kind === 'village'; g.beginPath(); g.arc(x, z, p === mapSel ? 9 : p.kind === 'big' ? 7 : vil ? 2.6 : 4.5, 0, TAU); g.fillStyle = p === mapSel ? '#ffcc00' : p.found ? '#fff' : vil ? '#d9e2e4' : '#9fb0b5'; g.fill(); g.lineWidth = vil ? 1 : 2; g.strokeStyle = '#111'; g.stroke(); }
-  for (const p of PLACES) { if ((p.kind === 'village' || (p.lu && p.kind === 'town')) && p !== mapSel) continue; const x = X(p.x), z = Z(p.z); g.font = '600 ' + (p.kind === 'big' || p === mapSel ? 21 : 17) + 'px "Barlow Condensed", sans-serif'; g.lineWidth = 4; g.strokeStyle = 'rgba(0,0,0,.8)'; g.strokeText(p.name, x + 10, z); g.fillStyle = p === mapSel ? '#ffcc00' : '#fff'; g.fillText(p.name, x + 10, z); }
+  for (const p of PLACES) { if ((p.kind === 'village' || (p.lu && p.kind === 'town')) && p !== mapSel) continue; const x = X(p.x), z = Z(p.z); g.font = '600 ' + (p.kind === 'big' || p === mapSel ? 21 : 17) + 'px Arial, sans-serif'; g.lineWidth = 4; g.strokeStyle = 'rgba(0,0,0,.8)'; g.strokeText(p.name, x + 10, z); g.fillStyle = p === mapSel ? '#ffcc00' : '#fff'; g.fillText(p.name, x + 10, z); }
   if (state.mission) { const t = state.mission.to; g.beginPath(); g.arc(X(t.x), Z(t.z), 12, 0, TAU); g.strokeStyle = '#ffcc00'; g.lineWidth = 4; g.stroke(); }
   chars.forEach((ch, i) => { g.beginPath(); g.arc(X(ch.x), Z(ch.z), 8, 0, TAU); g.fillStyle = i === active ? '#da291c' : '#3aa0ff'; g.fill(); g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke(); });
 }
@@ -963,10 +1145,60 @@ function fillPlaces() { const bx = $('pitems'), f = $('pfind').value.trim().toLo
   const add = (title, list) => { list = list.filter(p => !f || p.name.toLowerCase().includes(f)).sort((a, b) => a.name.localeCompare(b.name, 'de')); if (!list.length) return; const h = document.createElement('h3'); h.textContent = title + ' (' + list.length + ')'; bx.appendChild(h);
     for (const p of list) { const b = document.createElement('button'); b.type = 'button'; b.className = 'pi' + (p === here ? ' here' : ''); b.innerHTML = esc(p.name) + '<span>' + (p === here ? 'hier' : Math.round(Math.hypot(p.x - ch.x, p.z - ch.z) / 1000) + ' km') + '</span>'; b.addEventListener('click', () => travel(p)); bx.appendChild(b); } };
   add('Städte und Orte', PLACES.filter(p => !p.lu)); add('Kanton Luzern', PLACES.filter(p => p.lu)); }
-function toggleMap(on) { const want = on === undefined ? !mapOpen : on; if (want && (!started || busy)) return; mapOpen = want; if (mapOpen) { toggleGarage(false); mapSel = null; $('maphint').textContent = 'Ort wählen: mit dem Zug dorthin reisen.'; drawBig(); fillPlaces(); } $('mapov').hidden = !mapOpen; }
+function toggleMap(on) { const want = on === undefined ? !mapOpen : on; if (want && (!started || busy)) return; mapOpen = want; setPhotoView(false); if (mapOpen) { toggleGarage(false); mapSel = null; $('maphint').textContent = 'Ort wählen: mit dem Zug dorthin reisen.'; drawBig(); fillPlaces(); } $('mapov').hidden = !mapOpen; }
 $('big').addEventListener('click', e => { const c = $('big'), r = c.getBoundingClientRect(), [wx, wz] = c.toWorld((e.clientX - r.left) / r.width * c.width, (e.clientY - r.top) / r.height * c.height); let best = null, bd = 3200; for (const p of PLACES) { const d = Math.hypot(p.x - wx, p.z - wz) * (p.kind === 'village' ? 1.5 : 1); if (d < bd) { bd = d; best = p; } }
   if (!best) return; if (best === mapSel) { travel(best); return; } mapSel = best; $('maphint').textContent = best.name + ' gewählt. Nochmals antippen, um hinzureisen.'; drawBig(); });
 $('pfind').addEventListener('input', fillPlaces);
+
+function setPhotoView(on) {
+  const panel = $('photo-view'), container = $('street-container');
+  panel.hidden = !on;
+  $('mapbody').hidden = on;
+  $('photo-toggle').setAttribute('aria-expanded', String(on));
+  $('photo-toggle').textContent = on ? 'Zur Karte' : 'Ortsansicht';
+  container.replaceChildren();
+  if (!on) return;
+  const ch = chars[active], at = mapSel || ch.veh || ch;
+  const coordinates = (LAT_C - at.z / KZM).toFixed(6) + ',' + (LON_C + at.x / KXM).toFixed(6);
+  const heading = mapSel ? 0 : (180 - at.a * 180 / Math.PI + 360) % 360;
+  $('photo-place').textContent = mapSel ? mapSel.name : (placeAt(at.x, at.z)?.name || 'Dein Standort');
+  $('photo-coordinates').textContent = (mapSel ? 'Gewählter Ort' : 'Dein Spielstandort') + ' · ' + coordinates.replace(',', ', ');
+  const street = new URLSearchParams({ api: '1', map_action: 'pano', viewpoint: coordinates, heading: Math.round(heading) });
+  const satellite = new URLSearchParams({ api: '1', map_action: 'map', center: coordinates, zoom: '18', basemap: 'satellite' });
+  $('street-link').href = 'https://www.google.com/maps/@?' + street;
+  $('satellite-link').href = 'https://www.google.com/maps/@?' + satellite;
+  if (panel.dataset.embedKey) {
+    const frame = document.createElement('iframe');
+    frame.id = 'street-frame';
+    frame.title = 'Google Street View – ' + $('photo-place').textContent;
+    frame.allowFullscreen = true;
+    frame.referrerPolicy = 'strict-origin-when-cross-origin';
+    frame.src = 'https://www.google.com/maps/embed/v1/streetview?' + new URLSearchParams({
+      key: panel.dataset.embedKey, location: coordinates, heading: Math.round(heading)
+    });
+    container.append(frame);
+  }
+}
+$('photo-toggle').addEventListener('click', () => setPhotoView($('photo-view').hidden));
+$('facade-file').addEventListener('change', async event => {
+  const input = event.currentTarget, file = input.files[0], type = Number($('facade-type').value);
+  const label = $('facade-type').selectedOptions[0].textContent, feedback = $('facade-feedback');
+  if (!file) return;
+  input.value = '';
+  if (file.size > 20 * 1024 * 1024) { feedback.textContent = 'Bitte ein Bild unter 20 MB wählen.'; return; }
+  const version = ++facadeChanges[type], url = URL.createObjectURL(file);
+  try {
+    const image = await loadImage(url);
+    if (facadeChanges[type] !== version) return;
+    const tile = document.createElement('canvas');
+    tile.width = tile.height = 512;
+    tile.getContext('2d').drawImage(image, 0, 0, 512, 512);
+    applyFacadePhoto(type, tile);
+    feedback.textContent = 'Foto für ' + label + ' übernommen.';
+  } catch {
+    feedback.textContent = 'Das Bild konnte nicht gelesen werden. Bitte JPEG, PNG oder WebP wählen.';
+  } finally { URL.revokeObjectURL(url); }
+});
 
 /* ============================================================ Ton */
 let ac = null, eng, engGain, sound = true;
@@ -978,7 +1210,7 @@ const thud = () => blip(70, .18, 'square', .12), chime = () => { blip(660, .15, 
 const keys = {};
 const touchUI = () => { $('joy').hidden = false; $('pad').hidden = false; $('keys').hidden = true; };
 const NAV = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-addEventListener('keydown', e => { if (e.target && e.target.tagName === 'INPUT') { if (e.code === 'Escape') toggleMap(false); return; } if (e.repeat) { if (NAV.includes(e.code)) e.preventDefault(); return; } keys[e.code] = true;
+addEventListener('keydown', e => { if (e.target && ['INPUT', 'SELECT', 'SUMMARY'].includes(e.target.tagName)) { if (e.code === 'Escape') toggleMap(false); return; } if (e.repeat) { if (NAV.includes(e.code)) e.preventDefault(); return; } keys[e.code] = true;
   if (e.code === 'KeyE' || e.code === 'KeyF') act(); if (e.code === 'Enter' && !started && !$('go').disabled) begin();
   if (e.code === 'KeyG') toggleGarage(); if (e.code === 'KeyC') switchChar(); if (e.code === 'KeyM') toggleMap(); if (e.code === 'Escape') { toggleMap(false); toggleGarage(false); } if (e.code === 'KeyR') unstick();
   if (NAV.includes(e.code)) e.preventDefault(); });
@@ -1020,15 +1252,15 @@ function updHud() {
 }
 
 /* ============================================================ Tageszeit und Licht */
-const cA = new THREE.Color(), SKY = { topD: new THREE.Color(0x2f6fc4), topN: new THREE.Color(0x071022), horD: new THREE.Color(0xbfd9ea), horN: new THREE.Color(0x18243a), dusk: new THREE.Color(0xf0a060) };
+const cA = new THREE.Color(), SKY = { twilight: new THREE.Color(0x7767a9), topD: new THREE.Color(0x4486b9), topN: new THREE.Color(0x071022), horD: new THREE.Color(0xbfd9ea), horN: new THREE.Color(0x18243a), dusk: new THREE.Color(0xffa783) };
 function updEnv(target) {
-  const ang = (state.time - 6) / 12 * Math.PI, el = Math.sin(ang), day = sstep(-.1, .28, el), dusk = sstep(.5, .05, Math.abs(el)) * sstep(-.3, -.05, el);
+  const ang = (state.time - 6) / 12 * Math.PI, el = Math.sin(ang), day = sstep(-.1, .28, el), dusk = (1 - sstep(.05, .55, Math.abs(el))) * sstep(-.3, -.05, el);
   const sd = skyU.sunDir.value.set(Math.cos(ang) * .85, Math.max(el, -.15), .42).normalize();
-  skyU.top.value.copy(SKY.topN).lerp(SKY.topD, day); cA.copy(SKY.horN).lerp(SKY.horD, day).lerp(SKY.dusk, dusk * .65); skyU.hor.value.copy(cA); scene.fog.color.copy(cA); bgScene.fog.color.copy(cA);
-  skyU.sunCol.value.setRGB(1, .93, .8).multiplyScalar(day > .02 ? 1 : 0);
-  if (el > -.05) { _v.set(sd.x, Math.max(sd.y, .14), sd.z).normalize(); sun.color.setRGB(1, lerp(.72, .96, day), lerp(.5, .88, day)); sun.intensity = .2 + 2.7 * day; } else { _v.set(-.3, .8, .4).normalize(); sun.color.setRGB(.55, .65, 1); sun.intensity = .55; }
+  skyU.top.value.copy(SKY.topN).lerp(SKY.topD, day).lerp(SKY.twilight, dusk * .82); cA.copy(SKY.horN).lerp(SKY.horD, day).lerp(SKY.dusk, dusk * .9); skyU.hor.value.copy(cA); scene.fog.color.copy(cA); bgScene.fog.color.copy(cA);
+  skyU.sunCol.value.setRGB(1, .92 - .42 * dusk, .76 - .56 * dusk).multiplyScalar(sstep(-.10, .04, el));
+  if (el > -.05) { _v.set(sd.x, Math.max(sd.y, .14), sd.z).normalize(); sun.color.setRGB(1, lerp(.72, .96, day), lerp(.5, .88, day)); sun.color.g *= 1 - .28 * dusk; sun.color.b *= 1 - .48 * dusk; sun.intensity = .25 + 2.7 * day; } else { _v.set(-.3, .8, .4).normalize(); sun.color.setRGB(.55, .65, 1); sun.intensity = .55; }
   sun.position.copy(target).addScaledVector(_v, 520); sun.target.position.copy(target); sun2.position.copy(_v); sun2.color.copy(sun.color); sun2.intensity = sun.intensity;
-  hemi.intensity = hemi2.intensity = .42 + 1.35 * day; const n = 1 - day; for (const m of nightMats) m.emissiveIntensity = n * .95;
+  hemi.intensity = hemi2.intensity = .42 + 1.35 * day; const n = Math.max(1 - day, dusk * .42); for (const m of nightMats) m.emissiveIntensity = n * .95;
 }
 
 /* ============================================================ Schleife */
@@ -1059,6 +1291,7 @@ function frame(now) {
   if (now - strT > .25) { strT = now; stream(px, pz, py); }
   updTerrain(false);
   if (!busy) { updTraffic(dt, px, pz, run ? v : null); updPeds(dt, px, pz, run && v && !v.t.heli ? v : null); if (run) updMission(px, pz, now); }
+  waterTime.value = now % 4096;
   updClouds(dt); updLabels(px, pz, now);
   let dist, th;
   if (!started) { menuAng += dt * .1; camYaw = menuAng; dist = 190; th = 28; camPitch = .4; }

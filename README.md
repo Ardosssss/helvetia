@@ -99,5 +99,5 @@ Entwicklungsumgebung; ausserhalb davon die Zeile mit `cafile=` anpassen.
 - Luftbilder (SWISSIMAGE), Höhenmodell (swissALTI3D) und Dachformen der Gebäude (swissBUILDINGS3D 3.0): © [swisstopo](https://www.swisstopo.admin.ch).
 - Höhenmodell 100 m: Mapzen Terrain Tiles (u. a. SRTM, EU-DEM).
 - 3D-Bibliothek: [three.js](https://threejs.org) (MIT).
-
 - Fassadenfotos (CC0), für das Spiel zugeschnitten und gekachelt. Wohnblock aus [rubberducks Fototexturen](https://opengameart.org/content/high-res-texture-pack-1), Büro und Industrie aus Scousers [building_hsp](https://opengameart.org/node/34314) und [building_center](https://opengameart.org/node/34291).
+- Bäume und Strassenbelag (CC0). Die Laubkrone und der Belag verwenden Fotodetails aus [rubberducks Fototexturen](https://opengameart.org/content/high-res-texture-pack-1). Die Nadelbaumaufnahme stammt aus [High-res tree textures](https://opengameart.org/content/high-res-tree-textures).

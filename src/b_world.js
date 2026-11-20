@@ -20,7 +20,27 @@ function roofMatOf(im) { if (!im.roofMat) { im.roofMat = new THREE.MeshLambertMa
 /* ============================================================ Gelaende als Viererbaum: 25 m nah, bis 6.4 km in der Ferne */
 const TS = [800, 3200, 12800, 51200, 204800], TN = 32, SPLIT = [0, coarse ? .5 : .8, .75, .6, 1.25], SKIRT = [10, 45, 160, 500, 1200];
 const tnodes = new Map(); let tFrame = 0, tBudget = 0;
-const natWaterMat = new THREE.MeshPhongMaterial({ color: 0x2a7090, specular: 0x24343c, shininess: 40, transparent: true, opacity: 0.9 });
+const waterTime = { value: 0 };
+function lakeMaterial() {
+  const mat = new THREE.MeshPhongMaterial({
+    color: 0x276979, specular: 0xc3d6d6, shininess: 76, transparent: true, opacity: 0.91
+  });
+  mat.onBeforeCompile = shader => {
+    shader.uniforms.rippleTime = waterTime;
+    shader.vertexShader = 'varying vec2 waterXZ;\n' + shader.vertexShader.replace(
+      '#include <project_vertex>', '#include <project_vertex>\nwaterXZ = (modelMatrix * vec4(transformed, 1.0)).xz;'
+    );
+    shader.fragmentShader = 'uniform float rippleTime; varying vec2 waterXZ;\n' + shader.fragmentShader.replace(
+      '#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      float t = rippleTime;
+      vec2 slope = vec2(sin(dot(waterXZ, vec2(.42,.21)) + t * 1.4), cos(dot(waterXZ, vec2(.16,-.34)) - t));
+      float detail = 1.0 - smoothstep(80.0, 550.0, length(vViewPosition));
+      normal = normalize(normal + mat3(viewMatrix) * vec3(slope.x, 0., slope.y) * .095 * detail);`
+    );
+  };
+  return mat;
+}
+const natWaterMat = lakeMaterial();
 const tIndex = (() => { const V = TN + 1, idx = []; for (let j = 0; j < TN; j++) for (let i = 0; i < TN; i++) { const a = j * V + i, b = a + 1, c = a + V, d = c + 1; idx.push(a, c, b, b, c, d); }
   const S0 = V * V, ring = []; for (let i = 0; i < V; i++) ring.push(i); for (let j = 1; j < V; j++) ring.push(j * V + TN); for (let i = TN - 1; i >= 0; i--) ring.push(TN * V + i); for (let j = TN - 1; j >= 1; j--) ring.push(j * V);
   for (let k = 0; k < ring.length; k++) { const a = ring[k], b = ring[(k + 1) % ring.length], c = S0 + k, d = S0 + (k + 1) % ring.length; idx.push(a, b, c, b, d, c); }
@@ -73,7 +93,7 @@ function buildClouds() {
 function updClouds(dt) { const im = clouds.mesh; for (let i = 0; i < clouds.length; i++) { const c = clouds[i]; c.x += dt * 9; let dx = c.x - camX, dz = c.z - camZ; dx = ((dx + 30000) % 60000 + 60000) % 60000 - 30000; dz = ((dz + 30000) % 60000 + 60000) % 60000 - 30000; _mat.compose(_v.set(camX + dx, c.y, camZ + dz), _q.identity(), _s.set(c.sx, c.sy, c.sz)); im.setMatrixAt(i, _mat); } im.instanceMatrix.needsUpdate = true; }
 const labels = []; let labelT = 0;
 function buildLabels() { for (let i = 0; i < 10; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true, fog: false })); s.visible = false; s.renderOrder = 50; scene.add(s); labels.push(s); } }
-function labelTex(p) { if (!p.tex) { p.tex = canvasTex(320, 80, g => { g.font = '600 44px "Barlow Condensed", "Arial Narrow", sans-serif'; const w = Math.min(300, g.measureText(p.name).width + 36), x = (320 - w) / 2; g.fillStyle = '#f3f6f4'; g.strokeStyle = '#111'; g.lineWidth = 5; g.beginPath(); g.roundRect(x, 8, w, 62, 9); g.fill(); g.stroke(); g.fillStyle = '#111'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(p.name, 160, 41, 280); }); } return p.tex; }
+function labelTex(p) { if (!p.tex) { p.tex = canvasTex(320, 80, g => { g.font = '600 44px Arial, sans-serif'; const w = Math.min(300, g.measureText(p.name).width + 36), x = (320 - w) / 2; g.fillStyle = '#f3f6f4'; g.strokeStyle = '#111'; g.lineWidth = 5; g.beginPath(); g.roundRect(x, 8, w, 62, 9); g.fill(); g.stroke(); g.fillStyle = '#111'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(p.name, 160, 41, 280); }); } return p.tex; }
 function updLabels(px, pz, now) {
   if (now - labelT > .5) { labelT = now; const near = PLACES.map(p => [Math.hypot(p.x - px, p.z - pz), p]).filter(a => a[0] < 9000 && a[0] > a[1].r * .7).sort((a, b) => a[0] - b[0]).slice(0, labels.length);
     labels.forEach((s, i) => { const a = near[i]; s.visible = !!a; if (a) { const p = a[1]; if (s.material.map !== labelTex(p)) { s.material.map = p.tex; s.material.needsUpdate = true; } s.position.set(p.x, H(p.x, p.z) + 60 + a[0] * .03, p.z); } }); }

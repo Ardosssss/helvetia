@@ -27,6 +27,24 @@ function zFacade(ty) {                                 // Kachel: 2 Fensterachse
   const m = new THREE.MeshLambertMaterial({ map, emissiveMap: em, emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true }); nightMats.push(m); return m;
 }
 const zFac = [0, 1, 2, 3, 4, 5].map(zFacade);
+// Jede Fotokachel deckt zwei Fensterachsen und zwei Stockwerke ab.
+function applyFacadePhoto(type, image) {
+  const material = zFac[type], photo = imgTexture(image);
+  photo.wrapS = photo.wrapT = THREE.RepeatWrapping;
+  material.map.dispose();
+  if (material.emissiveMap) material.emissiveMap.dispose();
+  material.map = photo;
+  // Nur die gezeichneten Fenster passen zur ursprünglichen Leuchtmaske.
+  material.emissiveMap = null;
+  material.emissive.setHex(0x000000);
+  material.needsUpdate = true;
+}
+const facadeChanges = [0, 0, 0, 0];
+for (const [type, file] of [[1, 'wohnblock'], [2, 'buero'], [3, 'industrie']]) {
+  loadImage('media/fassaden/' + file + '.webp').then(image => {
+    if (!facadeChanges[type]) applyFacadePhoto(type, image);
+  }).catch(() => {}); // Die gezeichnete Fassade bleibt bei einem Ladefehler sichtbar.
+}
 // Erdgeschosse: eine Zeile je Bauart, zwei Achsen breit
 const zGround = (() => { const W = 256, RH = 128, cvs = document.createElement('canvas'); cvs.width = W; cvs.height = RH * 6; const g = cvs.getContext('2d');
   for (let t = 0; t < 6; t++) { const y0 = (5 - t) * RH; g.fillStyle = ['#ece8de', '#dedad0', '#cfd5da', '#d9d9d5', '#dcd5c5', '#9a958c'][t]; g.fillRect(0, y0, W, RH);
@@ -44,11 +62,41 @@ const zRoofMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE
 const zTileMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, map: canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#f2f0ec'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 16) { g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(0, y, w, 2.5); g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(0, y + 3, w, 2); g.fillStyle = 'rgba(0,0,0,.09)'; for (let x = (y / 16 % 2) * 6; x < w; x += 12) g.fillRect(x, y + 3, 1.5, 13); } const im = g.getImageData(0, 0, w, h); for (let i = 0; i < w * h; i++) { const n = (h2(i % w, i / w | 0) - .5) * 16; im.data[i * 4] += n; im.data[i * 4 + 1] += n; im.data[i * 4 + 2] += n; } g.putImageData(im, 0, 0); }, true) });
 const zNoise = canvasTex(128, 128, (g, w, h) => { const im = g.createImageData(w, h); for (let i = 0; i < w * h; i++) { const v = 200 + (h2(i % w, (i / w | 0) + 9) * 55 | 0); im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255; } g.putImageData(im, 0, 0); }, true);
 const zRoadMat = [-1, -2, -3].map(f => new THREE.MeshLambertMaterial({ vertexColors: true, map: zNoise, polygonOffset: true, polygonOffsetFactor: f, polygonOffsetUnits: f * 4 }));
-const zWaterMat = new THREE.MeshPhongMaterial({ color: 0x2b6f8f, specular: 0x24343c, shininess: 40, transparent: true, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -.5, polygonOffsetUnits: -2 });
+loadImage('media/belag.webp').then(image => {
+  const texture = imgTexture(image);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  zRoadMat[0].map = zRoadMat[1].map = texture;
+}).catch(() => {});
+const zWaterMat = Object.assign(lakeMaterial(), { polygonOffset: true, polygonOffsetFactor: -.5, polygonOffsetUnits: -2 });
 const zPropMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
-const treeMat = new THREE.MeshLambertMaterial({ vertexColors: true }), treeTint = [1, .9, .8, 1.1].map(v => new THREE.Color(v, v, v));
-const zLeafGeo = merge([[new THREE.CylinderGeometry(.25, .36, 3, 4), 0x5b4130, TM(0, 1.5, 0)], [new THREE.IcosahedronGeometry(2.8, coarse ? 0 : 1), 0x4c8a3c, TM(0, 5.4, 0, 1, .95, 1)], [new THREE.IcosahedronGeometry(1.8, 0), 0x5b9a45, TM(1.2, 4.2, .6)]]);
-const zFirGeo = merge([[new THREE.CylinderGeometry(.22, .34, 2.2, 4), 0x5b4130, TM(0, 1.1, 0)], [new THREE.ConeGeometry(2.3, 5.4, 6), 0x2c5e33, TM(0, 4.6, 0)], [new THREE.ConeGeometry(1.5, 4.4, 6), 0x35703a, TM(0, 7.6, 0)]]);
+const treeTint = [1, .9, .8, 1.1].map(v => new THREE.Color(v, v, v));
+const treeAtlas = canvasTex(128, 64, g => {
+  for (const x of [32, 96]) { g.fillStyle = '#594b36'; g.fillRect(x - 2, 23, 4, 40); }
+  g.fillStyle = '#466a43'; g.beginPath(); g.ellipse(32, 25, 27, 24, 0, 0, TAU); g.fill();
+  g.fillStyle = '#365942'; g.beginPath(); g.moveTo(96, 1); g.lineTo(119, 52); g.lineTo(73, 52); g.fill();
+});
+const treeMat = new THREE.MeshLambertMaterial({ map: treeAtlas, alphaTest: .35 });
+loadImage('media/baeume.webp').then(image => {
+  treeMat.map = imgTexture(image);
+  treeAtlas.dispose();
+}).catch(() => {});
+
+function treeCrown(pine) {
+  const pos = [], normal = [], uv = [], idx = [], height = pine ? 9.2 : 8.2;
+  const u = pine ? .5 : 0;
+  for (let i = 0; i < 3; i++) {
+    const angle = i * Math.PI / 3, dx = Math.cos(angle), dz = Math.sin(angle);
+    const radius = height / 2, base = pos.length / 3;
+    pos.push(-radius*dx,0,-radius*dz, radius*dx,0,radius*dz,
+             radius*dx,height,radius*dz, -radius*dx,height,-radius*dz);
+    uv.push(u,0, u+.5,0, u+.5,1, u,1);
+    // Nach oben und aussen gerichtete Normalen beleuchten die Krone als Volumen.
+    normal.push(-.6*dx,.8,-.6*dz, .6*dx,.8,.6*dz, .6*dx,.8,.6*dz, -.6*dx,.8,-.6*dz);
+    for (const j of [0,1,2, 0,2,3, 2,1,0, 3,2,0]) idx.push(base + j);
+  }
+  return geo({position: pos, normal, uv}, idx);
+}
+const zLeafGeo = treeCrown(false), zFirGeo = treeCrown(true);
 const WALLC = [[0xf4efe4, 0xefe2c8, 0xf2d9c4, 0xe7e9e2, 0xf7f3ea, 0xe9d6b8, 0xdfd3c2], [0xe6ddcb, 0xd9cdb8, 0xe9e4d9, 0xcfc7b8, 0xe2cdb4, 0xd4d7d6], [0xc9d2d8, 0xb9c2c9, 0xd9dcdc, 0xaab6bf, 0xe3e3df], [0xb9bbb8, 0xa9aba9, 0xc9c5ba, 0x9aa3a6], [0xd9cfb8, 0xcfc6ae, 0xe3dccb, 0xc4b89c], [0xffffff, 0xe6d2bc, 0xd9c2a6, 0xf2e2cc]].map(a => a.map(C3));
 const ROOFC = { tile: [0x8a4a35, 0x7a3f30, 0x6b4a3f, 0x93553c, 0x5f4a44, 0x7d5a48].map(C3), flat: [0x8c8f91, 0x9a9a94, 0x7d8286, 0xa5a59c, 0x6f7a6c].map(C3), metal: [0xaab0b3, 0x9aa1a5, 0xb9b6ad].map(C3), old: [0x6b5a4f, 0x5a6f63, 0x4f5a60].map(C3) };
 
@@ -70,7 +118,7 @@ function makeRoadSet(list, names, ox, oz, urbanAt) {
     const strip = (o, w, lift, c, ex) => { const hw = w / 2, base = o.pos.length / 3; let k = 0;
       for (let q = -1; q <= ns + 1; q++) { if ((q === -1 || q === ns + 1) && !ex) continue; let s = clamp(q, 0, ns) / ns * rd.len; roadPos(rd, clamp(s, .01, rd.len - .01), t); let x = t.x, z = t.z; if (q === -1) { x -= t.tx * ex; z -= t.tz * ex; } if (q === ns + 1) { x += t.tx * ex; z += t.tz * ex; }
         const lx = x - t.tz * hw, lz = z + t.tx * hw, rx = x + t.tz * hw, rz = z - t.tx * hw; let yl, yr; if (br) yl = yr = rd.y0 + (rd.y1 - rd.y0) * s / rd.len + lift + .05; else { yl = H(lx, lz) + lift; yr = H(rx, rz) + lift; }
-        o.pos.push(lx - ox, yl, lz - oz, rx - ox, yr, rz - oz); o.nor.push(0, 1, 0, 0, 1, 0); o.col.push(c[0], c[1], c[2], c[0], c[1], c[2]); o.uv.push(0, s / 7, w / 7, s / 7); if (k) { const b = base + (k - 1) * 2; o.idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); } k++; } };
+        o.pos.push(lx - ox, yl, lz - oz, rx - ox, yr, rz - oz); o.nor.push(0, 1, 0, 0, 1, 0); o.col.push(c[0], c[1], c[2], c[0], c[1], c[2]); o.uv.push(lx / 4, lz / 4, rx / 4, rz / 4); if (k) { const b = base + (k - 1) * 2; o.idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); } k++; } };
     if (urbanAt && rd.cls >= 1 && rd.cls <= 4 && !br && urbanAt(rd.pts[0], rd.pts[1])) strip(Lc[0], rd.w + 3.6, .09, SWC, rd.w * .3);
     strip(Lc[1], rd.w, .17 - rd.cls * .004, RC[rd.cls], ext);
     if (rd.cls >= 1 && rd.cls <= 3 && !(rd.fl & 2) && rd.len > 24) { const o = Lc[2]; for (let s = 6; s < rd.len - 6; s += 10) { roadPos(rd, s, t); const k = o.pos.length / 3, hx = t.tx * 1.6, hz = t.tz * 1.6, nx = -t.tz * .09, nz = t.tx * .09, y = (br ? rd.y0 + (rd.y1 - rd.y0) * s / rd.len + .05 : H(t.x, t.z)) + .22; o.pos.push(t.x - hx + nx - ox, y, t.z - hz + nz - oz, t.x - hx - nx - ox, y, t.z - hz - nz - oz, t.x + hx + nx - ox, y, t.z + hz + nz - oz, t.x + hx - nx - ox, y, t.z + hz - nz - oz); for (let q = 0; q < 4; q++) { o.nor.push(0, 1, 0); o.col.push(WHITE[0], WHITE[1], WHITE[2]); o.uv.push(0, 0); } o.idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); } }

@@ -8,7 +8,7 @@ from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import dijkstra
 from geo import *
 KANTON = True                                  # ganzer Kanton Luzern (Grenze aus coverage.py)
-PLACES = ['BI', 'NI', 'PO']                    # ausserhalb des Kantons: ganzer Ort
+PLACES = ['BI', 'NI', 'PO', 'IN', 'LY']        # ausserhalb des Kantons: ganzer Ort
 ROUTES = [['BI', 'NI', 'PO']]                  # und die Strasse dazwischen
 P = {p['id']: p for p in json.load(open('places.json'))}
 def route(ids):

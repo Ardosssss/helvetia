@@ -15,6 +15,7 @@ for d in ('r', 'n', 'w'): os.makedirs(OUT + d, exist_ok=True)
 cv = pickle.load(open('../data/coverage.pkl', 'rb')); cov = cv['cov']
 regs = set(map(tuple, json.load(open('../data/regions.json'))))
 ONLY = set(tuple(map(int, s.split('_'))) for s in sys.argv[1].split(',')) if len(sys.argv) > 1 and sys.argv[1] != '-' else None
+NATTOO = ONLY is None or '--landesstrassen' in sys.argv   # mit ONLY: Landesstrassen (n/) trotzdem neu, z. B. wenn eine Region dazukommt
 places = json.load(open('places.json'))
 bx0, bz0, bx1, bz1 = cov.bounds; CM = 50
 gxa = np.arange(bx0, bx1 + CM, CM); gza = np.arange(bz0, bz1 + CM, CM)
@@ -135,7 +136,7 @@ def on_way(o):
         nd = [(n.ref, wx(n.lon), wz(n.lat)) for n in o.nodes if n.location.valid()]
         if len(nd) < 2: return
         inreg = any(wanted(rkey(x, z)) for _, x, z in nd[::4] + [nd[-1]])
-        if not inreg and (c > 3 or ONLY): return
+        if not inreg and (c > 3 or not NATTOO): return
         tun = t.get('tunnel', 'no'); br = t.get('bridge', 'no') != 'no'
         one = t.get('oneway') == 'yes' or hw.startswith('motorway') or t.get('junction') == 'roundabout'
         name = t.get('name') or t.get('ref') or ''
@@ -386,7 +387,7 @@ for c, fl, name, w, nd, y0, y1 in pieces:
     if wanted(k) and incov(m.x, m.y):
         if c == 5 and L < 18 and cnt[nd[0][0]] + cnt[nd[-1][0]] < 4: continue
         RR[k].append((c, fl, name, w, y0, y1, list(ls.simplify(0.35, preserve_topology=False).coords), ls))
-    elif c <= 3 and not ONLY:
+    elif c <= 3 and NATTOO:
         co = [(round(x, 1), round(y, 1)) for x, y in ls.simplify(2.2, preserve_topology=False).coords]
         segs = cut(co, CELL); tot = sum(LineString(s).length for s in segs) or 1; run = 0
         for s in segs:
@@ -406,7 +407,7 @@ for tk, cells in NAT.items():
         out[f'{ck[0]},{ck[1]}'] = arr
     sj = json.dumps({'names': names, 'cells': out}, ensure_ascii=False, separators=(',', ':'))
     open(OUT + f'n/{tk[0]}_{tk[1]}.json', 'w', encoding='utf-8').write(sj); natfiles.append([tk[0], tk[1], len(sj)])
-if not ONLY: print('national files', len(natfiles), 'MB', round(sum(f[2] for f in natfiles) / 1e6, 1), flush=True)
+if NATTOO: print('national files', len(natfiles), 'MB', round(sum(f[2] for f in natfiles) / 1e6, 1), flush=True)
 
 # ------------------------------------------------------------------ Tunnel -> Portalpaare
 portals = []
@@ -632,3 +633,19 @@ if not ONLY:
     hi = sorted([int(v) for v in os.path.basename(f)[2:-4].split('_')] for f in glob.glob(OUT + 'z/h_*.jpg'))
     json.dump(dict(regions=regout, nat=[[a, b] for a, b, _ in natfiles], lu=lus, n12=n12, hi=hi, dem=nd, tunnels=portals), open(OUT + 'w/index.json', 'w'), ensure_ascii=False, separators=(',', ':'))
     print('index written', len(portals), 'tunnels', len(lus), 'lu tiles', len(n12), 'n12 tiles')
+else:                                   # nur einzelne Regionen: bestehenden Index und Ortsliste nachfuehren
+    ip = OUT + 'w/index.json'; idx = json.load(open(ip)); old = {(r[0], r[1]): r for r in idx['regions']}
+    for r in regout: old[(r[0], r[1])] = r
+    idx['regions'] = [old[k] for k in sorted(old)]
+    if NATTOO: idx['nat'] = [[a, b] for a, b, _ in natfiles]
+    idx['hi'] = sorted([int(v) for v in os.path.basename(f)[2:-4].split('_')] for f in glob.glob(OUT + 'z/h_*.jpg'))
+    json.dump(idx, open(ip, 'w'), ensure_ascii=False, separators=(',', ':'))
+    pp = OUT + 'w/places.json'; prev = {p['id']: p for p in json.load(open(pp))}; pl = []
+    for p in places:
+        q = prev.get(p['id'])
+        if q is None or p['id'] in hubinfo:
+            h = hubinfo.get(p['id'], [wx(p['lon']), wz(p['lat']), 0, wx(p['lon']) + 6, wz(p['lat']) + 6, 0])
+            q = dict(id=p['id'], name=p['name'], kind=p['kind'], lu=p['lu'], r=p['r'], x=round(wx(p['lon']), 1), z=round(wz(p['lat']), 1), hub=h, img=[int(v) for v in img_rect(p)])
+        pl.append(q)
+    json.dump(pl, open(pp, 'w'), ensure_ascii=False, separators=(',', ':'))
+    print('index nachgefuehrt:', len(idx['regions']), 'Regionen,', len(idx['nat']), 'Landesstrassen-Dateien,', len(pl), 'Orte')

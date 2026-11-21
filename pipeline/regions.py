@@ -90,6 +90,27 @@ def enc_dem(d):
             out.append(u)
     return base64.b64encode(bytes(out)).decode()
 
+# ------------------------------------------------------------------ Gebaeuderegister (gwr.py): Fassadenart und Geschosszahl je EGID
+GWR = pickle.load(open('../data/gwr.pkl', 'rb')) if os.path.exists('../data/gwr.pkl') else {}
+def gwr_type(g, ty, core, alp, egid):
+    """Fassadenart im Spiel: 0 Wohnhaus mit Fensterlaeden, 1 Wohnblock, 2 Buero/Geschaeft, 3 Industrie/Lager, 4 Altstadt/historisch,
+    5 Holzhaus/Chalet, 6 modernes Haus, 7 Scheune. Bauperiode: 8011 vor 1919, 8012-8013 bis 1960, 8014-8018 bis 1995, ab 8019 neuer."""
+    kl, bp, fl, bj = g; h = (egid * 2654435761 % 4294967296) / 4294967296
+    old = bp == 8011 or 0 < bj < 1919; mid = bp in (8012, 8013) or 1919 <= bj <= 1960; new = bp >= 8019 or bj > 1995
+    if kl in (1110, 1121):
+        t = (5 if h < .35 or alp else 0) if old and not core else 4 if old else 0 if mid else 6 if new else (0 if h < .5 else 6)
+    elif kl in (1122, 1130):
+        t = (4 if core or h < .3 else 0) if old else (0 if fl <= 3 else 1) if mid else 6 if new and fl <= 4 else 1
+    elif kl in (1211, 1212): t = 4 if old else 1
+    elif kl in (1220, 1230, 1231): t = 4 if old and core else 2
+    elif kl in (1261, 1262, 1263, 1264): t = 4 if old else 2
+    elif kl in (1241, 1242, 1251, 1252, 1265): t = 3
+    elif kl in (1271, 1276, 1277, 1278): t = 7
+    elif kl in (1272, 1273): t = 4
+    elif kl == 1274: t = 7 if not core else 3
+    else: t = ty
+    return t, (fl if 0 < fl <= 31 else 0)
+
 # ------------------------------------------------------------------ Dachfarbe aus dem Luftbild
 tile_cache = {}; lu_cache = {}
 def z17(lon, lat):
@@ -109,11 +130,24 @@ def lu14(x, z):
         p = f'../data/lu14_{i}_{j}.npy'; lu_cache[k] = np.load(p, mmap_mode='r') if os.path.exists(p) else None
     a = lu_cache[k]
     return None if a is None else a[min(4095, int((z - j * 25600) / 6.25)), min(4095, int((x - i * 25600) / 6.25))]
+hi_cache = {}
+def hiro(x, z):
+    """Farbe aus den scharfen 800-m-Kacheln (z/h_*.jpg), falls vorhanden"""
+    i, j = math.floor(x / 800), math.floor(z / 800); k = (i, j)
+    if k not in hi_cache:
+        p = f'../z/h_{i}_{j}.jpg'
+        if len(hi_cache) > 60: hi_cache.clear()
+        try: hi_cache[k] = np.asarray(Image.open(p).convert('RGB')) if os.path.exists(p) else None
+        except Exception: hi_cache[k] = None
+    a = hi_cache[k]
+    if a is None: return None
+    n = a.shape[0]; return a[min(n - 1, int((z - j * 800) / 800 * n)), min(n - 1, int((x - i * 800) / 800 * n))]
 def roofcol(pg):
     c = pg.centroid; pts = [(c.x, c.y)] + [((c.x + x) / 2, (c.y + y) / 2) for x, y in list(pg.exterior.coords)[:-1:max(1, (len(pg.exterior.coords) - 1) // 4)]]
     acc = []
     for x, z in pts:
-        v = z17(lon_of(x), lat_of(z))
+        v = hiro(x, z)
+        if v is None: v = z17(lon_of(x), lat_of(z))
         if v is None: v = lu14(x, z)
         if v is not None: acc.append(v)
     if not acc: return 0
@@ -292,7 +326,7 @@ for f in sorted(glob.glob('../data/b3d/t/*.pkl')):
         V = b['V']; lon, lat = TR.transform(V[:, 0], V[:, 1]); x = (lon - LON_C) * KXM; z = -(lat - LAT_C) * KZM
         cx, cz = float(x.mean()), float(z.mean()); k = rkey(cx, cz)
         if not wanted(k) or not incov(cx, cz): continue
-        seenb.add(b['id']); B3[k].append((np.column_stack([x, V[:, 2], z]), b['T'], b['kind'], b.get('ground')))
+        seenb.add(b['id']); B3[k].append((np.column_stack([x, V[:, 2], z]), b['T'], b['kind'], b.get('ground'), b.get('egid') or 0))
 print('b3d buildings', sum(len(v) for v in B3.values()), round(time.time() - t0), 's', flush=True)
 stats = dict(n=0, w=0, a=0)
 for o in osmium.FileProcessor(pbf).with_locations().with_areas().with_filter(osmium.filter.KeyFilter('highway', 'building', 'building:part', 'natural', 'waterway', 'landuse', 'railway', 'man_made')):
@@ -465,7 +499,7 @@ def finish(k):
                 if outl[q][0].contains(rp): drop.add(int(q))
     # echte Daecher zuordnen: OSM liefert die Nutzung, swisstopo die Form
     b3 = B3.get(k, []); b3out = defaultdict(list); fps = []; votes = defaultdict(list); pdrop = set()
-    for V, T, kind, _g in b3:
+    for V, T, kind, _g, _e in b3:
         try: fp = shapely.union_all(shapely.buffer(shapely.polygons(V[T][:, :, [0, 2]]), 0.03))
         except Exception: fp = Point(float(V[:, 0].mean()), float(V[:, 2].mean())).buffer(2)
         fps.append(fp)
@@ -482,7 +516,7 @@ def finish(k):
                 for q in ot.query(rp, predicate='within'): votes[j].append((outl[q][0].area, outl[q][1], outl[q][0])); drop.add(int(q))
         for q, (pp, _) in enumerate(parts):
             if len(ft.query(pp.representative_point(), predicate='within')): pdrop.add(q)
-    for j, (V, T, kind, gnd) in enumerate(b3):
+    for j, (V, T, kind, gnd, egid) in enumerate(b3):
         fp = fps[j]; a = fp.area; cx, cz = float(V[:, 0].mean()), float(V[:, 2].mean())
         core = any(math.hypot(cx - x, cz - z) < 900 for x, z in bigc); alp = any(math.hypot(cx - x, cz - z) < 1500 for x, z in alpc); flags = 0
         if votes[j]:
@@ -499,6 +533,8 @@ def finish(k):
         elif kind in ('Lagertank', 'Im Bau', 'Kuehlturm', 'Hochkamin', 'Offenes Gebaeude', 'Flugdach'): ty = 3
         else: ty = (2 if a > 1500 else 1) if (a > 330 or core) else (5 if alp and (j % 5) < 3 else 0)
         if kind in ('Offenes Gebaeude', 'Flugdach'): flags |= 1
+        nfl = 0
+        if egid in GWR: ty, nfl = gwr_type(GWR[egid], ty, core, alp, egid)
         Vd = np.round(np.column_stack([(V[:, 0] - ox) * 10, V[:, 1] * 10, (V[:, 2] - oz) * 10])).astype(np.int64)
         uq, inv = np.unique(Vd, axis=0, return_inverse=True); T2 = inv.reshape(-1)[T]; good = (T2[:, 0] != T2[:, 1]) & (T2[:, 1] != T2[:, 2]) & (T2[:, 0] != T2[:, 2]); T2 = T2[good]
         if not len(T2): continue
@@ -513,7 +549,7 @@ def finish(k):
         X = int(mn[0]) + 100000; Z = int(mn[2]) + 100000; ctr = (mn + uq.max(axis=0)) / 20.0
         ck = (min(19, max(0, int(ctr[0] // 400))), min(19, max(0, int(ctr[2] // 400))))
         rc = roofcol(max(ps, key=lambda p: p.area)) if ps else 0
-        b3out[ck].append(np.concatenate([[ty | flags << 8, rc, len(uq), len(T2), len(eo) // 2, len(ei) // 2, X & 0xffff, X >> 16, Z & 0xffff, Z >> 16, int(mn[1]), g], rel.ravel(), T2.ravel(), eo, ei]).astype(np.uint16))
+        b3out[ck].append(np.concatenate([[ty | nfl << 3 | flags << 8, rc, len(uq), len(T2), len(eo) // 2, len(ei) // 2, X & 0xffff, X >> 16, Z & 0xffff, Z >> 16, int(mn[1]), g], rel.ravel(), T2.ravel(), eo, ei]).astype(np.uint16))
     nb3 = sum(len(v) for v in b3out.values()); b3file = OUT + f'r/{k[0]}_{k[1]}.b3z'
     if nb3:
         # Binaerformat: Kopf (uint32: Kennung, Anzahl Chunks, je Chunk [ci | cj << 8, Anzahl, Offset, Laenge]) + uint16-Nutzdaten, zlib-komprimiert

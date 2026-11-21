@@ -1,7 +1,7 @@
 # Helvetia Open World
 
 Open-World-Spiel im Browser: die ganze Schweiz im Massstab 1:1 mit echtem Gelände.
-27 Städte und der ganze Kanton Luzern enthalten jedes Gebäude und jede Strasse.
+28 Städte und Orte sowie der ganze Kanton Luzern enthalten jedes Gebäude und jede Strasse.
 
 ## Spielen
 
@@ -70,9 +70,9 @@ Die folgenden Ordner entstehen durch die Pipeline und liegen im R2-Bucket (nicht
 | Pfad | Inhalt |
 |---|---|
 | `w/` | Landesdaten: Höhenmodell 100 m (`dem*.png`), Luftbilder Schweiz (`ortho.jpg`, `n_*.jpg`) und Kanton Luzern (`l_*.jpg`), Ortsliste, Index mit Tunnelportalen |
-| `r/` | 86 Regionen (je 8 × 8 km): `*.json` mit Strassen, Wasser, Bäumen, Höhenraster 25 m und den Gebäuden ohne Vermessungsdach; `*.b3z` mit den echten Dachformen (swissBUILDINGS3D, rund 470 000 Gebäude, komprimiertes Binärformat, siehe `pipeline/regions.py`); `*.trz` mit echten Bäumen (Standort, Höhe, Krone) im ganzen Kanton Luzern sowie in Biel, Nidau und Port (rund 5 Millionen Bäume in 42 Regionen) |
+| `r/` | 87 Regionen (je 8 × 8 km): `*.json` mit Strassen, Wasser, Bäumen, Höhenraster 25 m und den Gebäuden ohne Vermessungsdach; `*.b3z` mit den echten Dachformen (swissBUILDINGS3D, rund 470 000 Gebäude, komprimiertes Binärformat, siehe `pipeline/regions.py`); `*.trz` mit echten Bäumen (Standort, Höhe, Krone) im ganzen Kanton Luzern sowie in Biel, Nidau, Port, Lyssach und Interlaken (rund 5 Millionen Bäume in 44 Regionen) |
 | `n/` | Hauptstrassen ausserhalb der Detailgebiete |
-| `z/` | Luftbilder der 144 Orte (rund 1 m pro Pixel, auf das 800-m-Geländeraster ausgerichtet) und besonders scharfe 800-m-Kacheln `h_*.jpg` (0,4 m pro Pixel) für den ganzen Kanton Luzern sowie Biel, Nidau und Port (2595 Kacheln, rund 1,7 GB) |
+| `z/` | Luftbilder der 145 Orte (rund 1 m pro Pixel, auf das 800-m-Geländeraster ausgerichtet) und besonders scharfe 800-m-Kacheln `h_*.jpg` (0,4 m pro Pixel) für den ganzen Kanton Luzern sowie Biel, Nidau, Port, Lyssach und Interlaken (2620 Kacheln, rund 1,8 GB) |
 
 Nach Änderungen in `src/`: `./build.sh` ausführen und `index.html` mit einchecken.
 
@@ -87,7 +87,7 @@ mkdir -p data && cd data
 curl -LO https://planet.osm.ch/switzerland-exact.osm.pbf && mv switzerland-exact.osm.pbf ch.osm.pbf
 curl -Lo lu.osm.pbf https://download.openstreetmap.fr/extracts/europe/switzerland/lucerne-latest.osm.pbf
 cd ../pipeline
-python3 places.py          # Ortsliste (29 Städte und Orte + alle Orte im Kanton Luzern)
+python3 places.py          # Ortsliste (30 Städte und Orte + alle Orte im Kanton Luzern)
 python3 coverage.py        # Detailgebiet und Regionenraster
 python3 alti.py            # swissALTI3D-Höhenkacheln laden
 python3 nat.py dem         # Höhenmodell Schweiz 100 m + Seen
@@ -98,7 +98,7 @@ python3 hires.py           # besonders scharfe Kacheln für das Schwerpunktgebie
 python3 b3d_list.py        # Kachelliste swissBUILDINGS3D 3.0 für das Detailgebiet
 python3 b3d_fetch.py       # Dachflächen aus den CityGML-Kacheln (rund 4,5 GB Download; mit `baeume` nur das Schwerpunktgebiet, genügt für trees.py)
 python3 b3d_gdb.py         # Kacheln, die es nur als FileGDB gibt (Genf, Lausanne, Wallis, Graubünden)
-python3 regions.py         # Regionen, Landesstrassen, Tunnel, Index
+python3 regions.py         # Regionen, Landesstrassen, Tunnel, Index (nur einzelne Regionen nachführen: python3 regions.py -7_-4 --landesstrassen)
 python3 trees.py           # echte Bäume im Schwerpunktgebiet (swissSURFACE3D minus swissALTI3D, rund 25 GB Download; braucht die Kacheln von hires.py)
 python3 upload.py          # geänderte Dateien aus w/, r/, n/, z/ in den R2-Bucket laden
 ```

@@ -28,8 +28,14 @@ async function goThrough(p, speed) { busy = true; const o = p.other, len = p.len
 /* ============================================================ Kurierauftraege */
 let ring, beam;
 function buildMarkers() {
-  ring = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.2, 1.5, 28, 1, true), new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: .4, side: THREE.DoubleSide, depthWrite: false })); ring.visible = false; scene.add(ring);
-  beam = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 600, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: .3, side: THREE.DoubleSide, depthWrite: false, fog: false })); beam.visible = false; scene.add(beam);
+  /* Kurierpunkt: Leuchtring am Boden und ein nach oben verblassender Lichtvorhang; der Zielstrahl verblasst ebenfalls nach oben */
+  const glow = (op, fog) => new THREE.ShaderMaterial({ uniforms: { col: { value: new THREE.Color(0xffc21a) }, op: { value: op } }, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
+    vertexShader: 'varying float vY; void main(){ vY = uv.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: 'uniform vec3 col; uniform float op; varying float vY; void main(){ gl_FragColor = vec4(col, op * pow(1.0 - vY, 2.2)); }' });
+  ring = new THREE.Group(); ring.visible = false; scene.add(ring);
+  const curtain = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.2, 1.8, 40, 1, true), glow(.3)); curtain.position.y = .15; ring.add(curtain);
+  const disc = new THREE.Mesh(new THREE.RingGeometry(3.7, 4.2, 48), new THREE.MeshBasicMaterial({ color: 0xffd23a, transparent: true, opacity: .75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -8 })); disc.rotation.x = -Math.PI / 2; disc.position.y = -.74; ring.add(disc);
+  beam = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 5, 600, 24, 1, true), glow(.38)); beam.visible = false; scene.add(beam);
 }
 const kmBetween = (a, b) => Math.hypot(a.x - b.x, a.z - b.z) / 1000;
 function updMission(px, pz, t) {
@@ -269,7 +275,7 @@ async function boot(hot) {
     const [index, places, nat0] = await Promise.all([getJSON(DATA + 'w/index.json'), getJSON(DATA + 'w/places.json'), loadImage(DATA + 'w/ortho.jpg')]);
     const im0 = addImg(MAP0.x0, MAP0.z0, MAP0.x0 + MAP0.w, MAP0.z0 + MAP0.h, DATA + 'w/ortho.jpg', 4, 0, .5); imgReady(im0, nat0);
     for (const [i, j] of index.n12) addImg(i * 102400, j * 102400, (i + 1) * 102400, (j + 1) * 102400, DATA + 'w/n_' + i + '_' + j + '.jpg', 2, 1, .5);
-    if (!coarse) for (const [i, j] of index.hi || []) addImg(i * 800, j * 800, (i + 1) * 800, (j + 1) * 800, DATA + 'z/h_' + i + '_' + j + '.jpg', 0, 4, .16);
+    for (const [i, j] of index.hi || []) addImg(i * 800, j * 800, (i + 1) * 800, (j + 1) * 800, DATA + 'z/h_' + i + '_' + j + '.jpg', 0, 4, .16);
     for (const [i, j] of index.lu) addImg(i * 25600, j * 25600, (i + 1) * 25600, (j + 1) * 25600, DATA + 'w/l_' + i + '_' + j + '.jpg', 1, 2, .4);
     initPlaces(places);
     await say('Lade Höhenmodell …'); await loadDEM(index.dem);

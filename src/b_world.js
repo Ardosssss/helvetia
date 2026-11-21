@@ -1,11 +1,14 @@
 /* ============================================================ Luftbilder: grob fuers Land, fein fuer Kanton Luzern und die Orte */
+/* Luftbilder sind schon belichtete Fotos: im Sonnenlicht sonst zu hell (weisse Flaechen brennen aus) */
+const PHOTO = new THREE.Color(.74, .74, .74);
 const IMGS = []; let nightMats = [], imgLoading = 0, camX = 0, camZ = 0;
 function addImg(x0, z0, x1, z1, url, maxL, pr, amp) { const im = { x0, z0, x1, z1, url, maxL, pr, amp, state: 'none', tex: null, mat: null, el: null, roofMat: null, t: 0 }; IMGS.push(im); return im; }
-function imgReady(im, el) { im.el = el; if (im.pr <= 2) { const c = document.createElement('canvas'); c.width = c.height = im.pr ? 1024 : 2048; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(el, 0, 0, c.width, c.height); im.px = g.getImageData(0, 0, c.width, c.height).data; im.pw = c.width; } im.tex = imgTexture(el); im.mat = withDetail(new THREE.MeshLambertMaterial({ map: im.tex }), (im.x1 - im.x0) / 2.5, (im.z1 - im.z0) / 2.5, im.amp); im.state = 'ready'; if (im.pr === 4 && typeof b3Dirty === 'function') b3Dirty(im); if (im.roofMat) { im.roofMat.map = im.tex; im.roofMat.color.set(0xffffff); im.roofMat.needsUpdate = true; } dirtyRect(im.x0, im.z0, im.x1, im.z1, im.maxL); }
+function imgReady(im, el) { im.el = el; if (im.pr <= 2) { const c = document.createElement('canvas'); c.width = c.height = im.pr ? 1024 : 2048; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(el, 0, 0, c.width, c.height); im.px = g.getImageData(0, 0, c.width, c.height).data; im.pw = c.width; } im.tex = imgTexture(el); im.mat = withDetail(new THREE.MeshLambertMaterial({ map: im.tex, color: PHOTO }), (im.x1 - im.x0) / 2.5, (im.z1 - im.z0) / 2.5, im.amp); im.state = 'ready'; if (im.pr === 4 && typeof b3Dirty === 'function') b3Dirty(im); if (im.roofMat) { im.roofMat.map = im.tex; im.roofMat.color.copy(PHOTO); im.roofMat.needsUpdate = true; } dirtyRect(im.x0, im.z0, im.x1, im.z1, im.maxL); }
 /* Besonders scharfe 800-m-Kacheln (pr 4): nur rund um die Kamera geladen, weiter weg wieder freigegeben */
+const HI_IN = coarse ? 380 : 900, HI_OUT = coarse ? 650 : 1400;     // Handy: kleinerer Kreis, damit der Grafikspeicher reicht
 function updHi() { for (const im of IMGS) { if (im.pr !== 4) continue; const d = Math.hypot(clamp(camX, im.x0, im.x1) - camX, clamp(camZ, im.z0, im.z1) - camZ);
-    if (im.state === 'none') { if (d < 900) im.state = 'want'; } else if (im.state === 'want') { if (d > 1200) im.state = 'none'; }
-    else if (im.state === 'ready' && d > 1400) { im.state = 'none'; im.tex.dispose(); im.mat.dispose(); im.tex = im.mat = im.el = null; if (im.roofMat) { im.roofMat.map = null; im.roofMat.color.set(0x8a8780); im.roofMat.needsUpdate = true; } dirtyRect(im.x0, im.z0, im.x1, im.z1, 0); } } }
+    if (im.state === 'none') { if (d < HI_IN) im.state = 'want'; } else if (im.state === 'want') { if (d > HI_IN + 300) im.state = 'none'; }
+    else if (im.state === 'ready' && d > HI_OUT) { im.state = 'none'; im.tex.dispose(); im.mat.dispose(); im.tex = im.mat = im.el = null; if (im.roofMat) { im.roofMat.map = null; im.roofMat.color.set(0x8a8780); im.roofMat.needsUpdate = true; } if (typeof b3Dirty === 'function') b3Dirty(im); dirtyRect(im.x0, im.z0, im.x1, im.z1, 0); } } }
 function pumpImages() {
   updHi();
   if (imgLoading >= 2) return; let best = null, bd = 1e18;
@@ -20,7 +23,7 @@ function pickImg(x0, z0, x1, z1, L) { let best = null, ready = null; for (const 
   if (best && best.state === 'none') best.state = 'want'; return ready; }
 function imgAt(x, z) { let r = null; for (const im of IMGS) if (im.state === 'ready' && im.x0 <= x && im.x1 >= x && im.z0 <= z && im.z1 >= z && (!r || im.pr > r.pr)) r = im; return r; }
 function patchAt(x0, z0, x1, z1) { for (const im of IMGS) if (im.pr === 3 && im.x0 <= x0 && im.z0 <= z0 && im.x1 >= x1 && im.z1 >= z1) return im; return null; }
-function roofMatOf(im) { if (!im.roofMat) { im.roofMat = new THREE.MeshLambertMaterial({ map: im.tex, color: im.tex ? 0xffffff : 0x8a8780, side: THREE.DoubleSide }); } return im.roofMat; }
+function roofMatOf(im) { if (!im.roofMat) { im.roofMat = new THREE.MeshLambertMaterial({ map: im.tex, color: im.tex ? PHOTO : 0x8a8780, side: THREE.DoubleSide }); } return im.roofMat; }
 
 /* ============================================================ Gelaende als Viererbaum: 25 m nah, bis 6.4 km in der Ferne */
 const TS = [800, 3200, 12800, 51200, 204800], TN = 32, SPLIT = [0, coarse ? .5 : .8, .75, .6, 1.25], SKIRT = [10, 45, 160, 500, 1200];
@@ -28,19 +31,28 @@ const tnodes = new Map(); let tFrame = 0, tBudget = 0;
 const waterTime = { value: 0 };
 function lakeMaterial() {
   const mat = new THREE.MeshPhongMaterial({
-    color: 0x276979, specular: 0xc3d6d6, shininess: 76, transparent: true, opacity: 0.91
+    color: 0x1c4c57, specular: 0xd8e4e4, shininess: 120, transparent: true, opacity: 0.93
   });
   mat.onBeforeCompile = shader => {
-    shader.uniforms.rippleTime = waterTime;
+    shader.uniforms.rippleTime = waterTime; shader.uniforms.skyRefl = { value: skyU.hor.value }; shader.uniforms.skyTop = { value: skyU.top.value };
     shader.vertexShader = 'varying vec2 waterXZ;\n' + shader.vertexShader.replace(
       '#include <project_vertex>', '#include <project_vertex>\nwaterXZ = (modelMatrix * vec4(transformed, 1.0)).xz;'
     );
-    shader.fragmentShader = 'uniform float rippleTime; varying vec2 waterXZ;\n' + shader.fragmentShader.replace(
+    shader.fragmentShader = 'uniform float rippleTime; uniform vec3 skyRefl, skyTop; varying vec2 waterXZ;\n' + shader.fragmentShader.replace(
+      '#include <opaque_fragment>', `// Spiegelung des Himmels: flach betrachtet hell wie der Horizont, steil von oben dunkel und durchsichtig
+      float fres = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 5.0);
+      vec3 refl = mix(skyTop, skyRefl, .5 + .5 * fres);
+      outgoingLight = mix(outgoingLight, refl * .72, clamp(.08 + .72 * fres, 0.0, .85));
+      diffuseColor.a = mix(diffuseColor.a, 1.0, fres);
+      #include <opaque_fragment>`).replace(
       '#include <normal_fragment_maps>', `#include <normal_fragment_maps>
       float t = rippleTime;
-      vec2 slope = vec2(sin(dot(waterXZ, vec2(.42,.21)) + t * 1.4), cos(dot(waterXZ, vec2(.16,-.34)) - t));
-      float detail = 1.0 - smoothstep(80.0, 550.0, length(vViewPosition));
-      normal = normalize(normal + mat3(viewMatrix) * vec3(slope.x, 0., slope.y) * .095 * detail);`
+      // vier unregelmaessig gerichtete Wellenzuege, damit kein sichtbares Streifenmuster entsteht
+      vec2 p = waterXZ;
+      vec2 slope = vec2(.42,.21) * cos(dot(p, vec2(.42,.21)) + t * 1.4) + vec2(.16,-.34) * cos(dot(p, vec2(.16,-.34)) - t * 1.1)
+                 + vec2(-.71,.53) * .55 * cos(dot(p, vec2(-.71,.53)) + t * 1.9 + sin(p.y * .05)) + vec2(1.13,.87) * .3 * cos(dot(p, vec2(1.13,.87)) - t * 2.3 + sin(p.x * .07));
+      float detail = 1.0 - smoothstep(60.0, 700.0, length(vViewPosition));
+      normal = normalize(normal + mat3(viewMatrix) * vec3(slope.x, 0., slope.y) * .16 * detail);`
     );
   };
   return mat;

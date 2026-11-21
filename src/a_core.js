@@ -77,7 +77,7 @@ const C3 = hex => { _col.set(hex); return [_col.r, _col.g, _col.b]; };
 
 const detailTex = canvasTex(128, 128, (g, w, h) => { const im = g.createImageData(w, h); for (let i = 0; i < w * h; i++) { const x = i % w, y = i / w | 0, v = 150 + (h2(x, y + 9) * 70 + h2(x >> 2, (y >> 2) + 40) * 35 | 0); im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255; } g.putImageData(im, 0, 0); }, true);
 function withDetail(mat, ru, rv, amp) { mat.onBeforeCompile = sh => { sh.uniforms.dTex = { value: detailTex }; sh.uniforms.dRep = { value: new THREE.Vector2(ru, rv) }; sh.uniforms.dAmp = { value: amp };
-  sh.fragmentShader = sh.fragmentShader.replace('void main() {', 'uniform sampler2D dTex; uniform vec2 dRep; uniform float dAmp;\nvoid main() {').replace('#include <map_fragment>', '#include <map_fragment>\n#ifdef USE_MAP\n diffuseColor.rgb *= 1.0 + (texture2D(dTex, vMapUv * dRep).r - 0.62) * dAmp;\n#endif'); }; mat.customProgramCacheKey = () => 'det' + amp; return mat; }
+  sh.fragmentShader = sh.fragmentShader.replace('void main() {', 'uniform sampler2D dTex; uniform vec2 dRep; uniform float dAmp;\nvoid main() {').replace('#include <map_fragment>', '#include <map_fragment>\n#ifdef USE_MAP\n float dNear = 1.0 - smoothstep(8.0, 70.0, length(vViewPosition));\n diffuseColor.rgb *= 1.0 + (texture2D(dTex, vMapUv * dRep).r - 0.62) * dAmp + (texture2D(dTex, vMapUv * dRep * 5.3 + 0.37).r - 0.62) * dAmp * 1.4 * dNear;\n#endif'); }; mat.customProgramCacheKey = () => 'det2' + amp; return mat; }
 
 /* Himmel */
 const skyU = { top: { value: new THREE.Color(0x3b78c9) }, hor: { value: new THREE.Color(0xbcd7ea) }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color(0xfff0d0) } };

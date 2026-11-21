@@ -61,7 +61,8 @@ const zGround = (() => { const W = 256, RH = 128, cvs = document.createElement('
 const zRoofMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
 const zTileMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, map: canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#f2f0ec'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 16) { g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(0, y, w, 2.5); g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(0, y + 3, w, 2); g.fillStyle = 'rgba(0,0,0,.09)'; for (let x = (y / 16 % 2) * 6; x < w; x += 12) g.fillRect(x, y + 3, 1.5, 13); } const im = g.getImageData(0, 0, w, h); for (let i = 0; i < w * h; i++) { const n = (h2(i % w, i / w | 0) - .5) * 16; im.data[i * 4] += n; im.data[i * 4 + 1] += n; im.data[i * 4 + 2] += n; } g.putImageData(im, 0, 0); }, true) });
 const zNoise = canvasTex(128, 128, (g, w, h) => { const im = g.createImageData(w, h); for (let i = 0; i < w * h; i++) { const v = 200 + (h2(i % w, (i / w | 0) + 9) * 55 | 0); im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255; } g.putImageData(im, 0, 0); }, true);
-const zRoadMat = [-1, -2, -3].map(f => new THREE.MeshLambertMaterial({ vertexColors: true, map: zNoise, polygonOffset: true, polygonOffsetFactor: f, polygonOffsetUnits: f * 4 }));
+const zRoadMat = [-1, -2, -3].map(f => new THREE.MeshLambertMaterial({ vertexColors: true, map: zNoise, polygonOffset: true, polygonOffsetFactor: f, polygonOffsetUnits: f * 4, emissive: 0x2e2a24, emissiveIntensity: 0 }));
+nightMats.push(...zRoadMat);   // nachts warmer Schimmer der Strassenbeleuchtung
 loadImage('media/belag.webp').then(image => {
   const texture = imgTexture(image);
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
@@ -102,7 +103,7 @@ const ROOFC = { tile: [0x8a4a35, 0x7a3f30, 0x6b4a3f, 0x93553c, 0x5f4a44, 0x7d5a4
 
 /* ============================================================ Strassennetze (Region oder Landesstrassen-Zelle) */
 const roadSets = new Set(), GK = (cx, cz) => (cx + 8192) * 16384 + cz + 8192;
-const RC = [C3(0x3c4043), C3(0x3c4043), C3(0x40444a), C3(0x444950), C3(0x4b5056), C3(0x595d61), C3(0xb1ab9d), C3(0x8a6a48)], SWC = C3(0xaaa79e), WHITE = C3(0xf2f2ec);
+const RC = [C3(0x50545a), C3(0x50545a), C3(0x53575c), C3(0x565a5f), C3(0x5b5f63), C3(0x65686b), C3(0xb1ab9d), C3(0x8a6a48)], SWC = C3(0x98968f), WHITE = C3(0xf2f2ec);
 function roadPos(rd, s, out) { const c = rd.cum; let lo = 0, hi = rd.n - 2; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (c[m] <= s) lo = m; else hi = m - 1; } const P = rd.pts, t = clamp((s - c[lo]) / ((c[lo + 1] - c[lo]) || 1), 0, 1); out.x = P[lo * 2] + (P[lo * 2 + 2] - P[lo * 2]) * t; out.z = P[lo * 2 + 1] + (P[lo * 2 + 3] - P[lo * 2 + 1]) * t; out.tx = P[lo * 2 + 2] - P[lo * 2]; out.tz = P[lo * 2 + 3] - P[lo * 2 + 1]; const l = Math.hypot(out.tx, out.tz) || 1; out.tx /= l; out.tz /= l; return out; }
 function makeRoadSet(list, names, ox, oz, urbanAt) {
   const S = { roads: [], nodes: new Map(), rgrid: new Map(), bgrid: new Map(), g: new THREE.Group(), far: [], x0: 1e18, z0: 1e18, x1: -1e18, z1: -1e18 }; S.g.position.set(ox, 0, oz);
@@ -251,7 +252,7 @@ function b3Build(R, C, lod) {
   const U = R.b3.U, x0 = R.x0, z0 = R.z0, full = lod === 2, old = C.ms;
   const mk = (uv, col, idx) => ({ pos: [], nor: [], uv: uv ? [] : null, col: col ? [] : null, idx: idx ? [] : null });
   const W = [0, 1, 2, 3, 4, 5].map(() => mk(1, 1, 1)), G = mk(1, 1, 1), Rf = mk(0, 1, 0), Rt = mk(1, 1, 0), RP = new Map();
-  const quad = (o, ax, az, bx, bz, a0, b0, a1, b1, nx, nz, u0, u1, va0, vb0, va1, vb1, r, g, b) => { const k = o.pos.length / 3; o.pos.push(ax, a0, az, bx, b0, bz, bx, b1, bz, ax, a1, az); o.nor.push(nx, 0, nz, nx, 0, nz, nx, 0, nz, nx, 0, nz); o.uv.push(u0, va0, u1, vb0, u1, vb1, u0, va1); o.col.push(r, g, b, r, g, b, r, g, b, r, g, b); o.idx.push(k, k + 1, k + 2, k, k + 2, k + 3); };
+  const quad = (o, ax, az, bx, bz, a0, b0, a1, b1, nx, nz, u0, u1, va0, vb0, va1, vb1, r, g, b, dk = 1) => { const k = o.pos.length / 3, r0 = r * dk | 0, g0 = g * dk | 0, b0_ = b * dk | 0; o.pos.push(ax, a0, az, bx, b0, bz, bx, b1, bz, ax, a1, az); o.nor.push(nx, 0, nz, nx, 0, nz, nx, 0, nz, nx, 0, nz); o.uv.push(u0, va0, u1, vb0, u1, vb1, u0, va1); o.col.push(r0, g0, b0_, r0, g0, b0_, r, g, b, r, g, b); o.idx.push(k, k + 1, k + 2, k, k + 2, k + 3); };
   const flatq = (ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, nx, nz, r, g, b) => { Rf.pos.push(ax, ay, az, bx, by, bz, cx, cy, cz, ax, ay, az, cx, cy, cz, dx, dy, dz); for (let i = 0; i < 6; i++) { Rf.nor.push(nx, 0, nz); Rf.col.push(r, g, b); } };
   let p = C.off;
   for (let bi = 0; bi < C.n; bi++) {
@@ -267,7 +268,7 @@ function b3Build(R, C, lod) {
     let sh = gr ? clamp(gmin - gr, -5, 5) : 0; if (ymin + sh < gmin + 2.1) sh = gmin + 2.1 - ymin;
     if (sh) { for (let i = 0; i < nV; i++) B3Y[i] += sh; ymin += sh; }
     const hs = h2(U[p0 + 6], U[p0 + 8]), wc = WALLC[ty][hs * WALLC[ty].length | 0], sd = (.9 + h2(U[p0 + 8], U[p0 + 6]) * .16) * 255, cr = Math.min(255, wc[0] * sd) | 0, cg = Math.min(255, wc[1] * sd) | 0, cb = Math.min(255, wc[2] * sd) | 0;
-    let rr, rg, rb; if (bc >= 4096) { /* gemessene Dachfarbe: etwas kraeftiger und dunkler, weil die Sonne im Spiel die Dachflaeche zusaetzlich aufhellt */ const q0 = (bc >> 8 & 15) / 15, q1 = (bc >> 4 & 15) / 15, q2 = (bc & 15) / 15, qm = (q0 + q1 + q2) / 3; _col.setRGB(clamp((qm + (q0 - qm) * 1.3) * .9, 0, 1), clamp((qm + (q1 - qm) * 1.3) * .9, 0, 1), clamp((qm + (q2 - qm) * 1.3) * .9, 0, 1), THREE.SRGBColorSpace); rr = _col.r * 255 | 0; rg = _col.g * 255 | 0; rb = _col.b * 255 | 0; } else { const pal = ty === 3 ? ROOFC.metal : ty === 4 ? ROOFC.old : ty === 0 || ty === 5 ? ROOFC.tile : ROOFC.flat, q = pal[h2(U[p0 + 6] + 7, U[p0 + 8]) * pal.length | 0]; rr = q[0] * 255 | 0; rg = q[1] * 255 | 0; rb = q[2] * 255 | 0; }
+    let rr, rg, rb; if (bc >= 4096) { /* gemessene Dachfarbe: etwas kraeftiger und dunkler, weil die Sonne im Spiel die Dachflaeche zusaetzlich aufhellt */ const q0 = (bc >> 8 & 15) / 15, q1 = (bc >> 4 & 15) / 15, q2 = (bc & 15) / 15, qm = (q0 + q1 + q2) / 3; _col.setRGB(clamp((qm + (q0 - qm) * 1.05 + (q0 - q1) * .12) * .9, 0, 1), clamp((qm + (q1 - qm) * .8) * .9, 0, 1), clamp((qm + (q2 - qm) * 1.05) * .9, 0, 1), THREE.SRGBColorSpace); rr = _col.r * 255 | 0; rg = _col.g * 255 | 0; rb = _col.b * 255 | 0; } else { const pal = ty === 3 ? ROOFC.metal : ty === 4 ? ROOFC.old : ty === 0 || ty === 5 ? ROOFC.tile : ROOFC.flat, q = pal[h2(U[p0 + 6] + 7, U[p0 + 8]) * pal.length | 0]; rr = q[0] * 255 | 0; rg = q[1] * 255 | 0; rb = q[2] * 255 | 0; }
     let Pim = null, Rp = null; if (full) for (const im of R.hi) if (im.state === 'ready' && im.x0 <= xa + x0 && im.x1 >= xb + x0 && im.z0 <= za + z0 && im.z1 >= zb + z0) { Pim = im; break; }
     if (!Pim) for (const im of R.patches) if (im.x0 <= xa + x0 - 1 && im.x1 >= xb + x0 + 1 && im.z0 <= za + z0 - 1 && im.z1 >= zb + z0 + 1) { Pim = im; break; }
     if (Pim) { Rp = RP.get(Pim); if (!Rp) RP.set(Pim, Rp = mk(1, 0, 0)); }
@@ -275,7 +276,7 @@ function b3Build(R, C, lod) {
     for (let i = 0; i < nT; i++) { const a = U[t0 + i * 3]; let b = U[t0 + i * 3 + 1], c = U[t0 + i * 3 + 2];
       const ax = B3X[a], ay = B3Y[a], az = B3Z[a]; let ux = B3X[b] - ax, uy = B3Y[b] - ay, uz = B3Z[b] - az, vx = B3X[c] - ax, vy = B3Y[c] - ay, vz = B3Z[c] - az, nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz); if (l < 1e-5) continue; nx /= l; ny /= l; nz /= l;
       if (ny < 0) { const t = b; b = c; c = t; nx = -nx; ny = -ny; nz = -nz; }
-      const qx = B3X[b], qy = B3Y[b], qz = B3Z[b], sx = B3X[c], sy = B3Y[c], sz = B3Z[c], o = ny >= .97 ? (Rp || Rf) : ny < .2 ? Rf : Rt, n1 = nx * 127 | 0, n2 = ny * 127 | 0, n3 = nz * 127 | 0;
+      const qx = B3X[b], qy = B3Y[b], qz = B3Z[b], sx = B3X[c], sy = B3Y[c], sz = B3Z[c], o = ny >= .35 && Rp ? Rp : ny >= .97 || ny < .2 ? Rf : Rt, n1 = nx * 127 | 0, n2 = ny * 127 | 0, n3 = nz * 127 | 0;
       o.pos.push(ax, ay, az, qx, qy, qz, sx, sy, sz); o.nor.push(n1, n2, n3, n1, n2, n3, n1, n2, n3);
       if (o === Rt) { const hl = Math.hypot(nx, nz), tx = -nz / hl / 1.1, tz = nx / hl / 1.1, vs = 1 / (.73 * hl); o.uv.push((ax - bx) * tx + (az - bz) * tz, (ay - by) * vs, (qx - bx) * tx + (qz - bz) * tz, (qy - by) * vs, (sx - bx) * tx + (sz - bz) * tz, (sy - by) * vs); o.col.push(rr, rg, rb, rr, rg, rb, rr, rg, rb); }
       else if (o === Rp) { const ku = 1 / (Pim.x1 - Pim.x0), kv = 1 / (Pim.z1 - Pim.z0), ou = x0 - Pim.x0, ov = z0 - Pim.z0; o.uv.push((ax + ou) * ku, 1 - (az + ov) * kv, (qx + ou) * ku, 1 - (qz + ov) * kv, (sx + ou) * ku, 1 - (sz + ov) * kv); }
@@ -293,9 +294,9 @@ function b3Build(R, C, lod) {
       if (hi <= bot + .2) continue;
       const up = (lo, A, Bq) => { if (!nb || hi - lo < 2.4) return [.02, .02]; if (lev) { const f = Math.max(1, Math.round((hi - lo) / 3.1)) / 2; return [f, f]; } return [Math.max(0, A - lo) / 6.2, Math.max(0, Bq - lo) / 6.2]; };
       if (full && hi - gav >= 4.3) { const ga = Math.min(ya, gfTop), gb = Math.min(yb, gfTop), ua = h2(U[p0 + 6] + i, U[p0 + 8]) < .5 ? 0 : .5, k = (vg1 - vg0) / (gfTop - bot);
-        quad(G, ax, az, qx, qz, bot, bot, ga, gb, nx, nz, ua, ua + u1, vg0, vg0, vg0 + (ga - bot) * k, vg0 + (gb - bot) * k, cr, cg, cb);
+        quad(G, ax, az, qx, qz, bot, bot, ga, gb, nx, nz, ua, ua + u1, vg0, vg0, vg0 + (ga - bot) * k, vg0 + (gb - bot) * k, cr, cg, cb, .68);
         if (ya > gfTop + .05 || yb > gfTop + .05) { const v = up(gfTop, ya, yb); quad(Wl, ax, az, qx, qz, ga, gb, ya, yb, nx, nz, 0, u1, 0, 0, v[0], v[1], cr, cg, cb); } }
-      else if (full) { const ua = h2(U[p0 + 6] + i, U[p0 + 8]) < .5 ? 0 : .5, k = (vg1 - vg0) / Math.max(3.3, hi - bot); quad(G, ax, az, qx, qz, bot, bot, ya, yb, nx, nz, ua, ua + u1, vg0, vg0, vg0 + Math.max(0, ya - bot) * k, vg0 + Math.max(0, yb - bot) * k, cr, cg, cb); }
+      else if (full) { const ua = h2(U[p0 + 6] + i, U[p0 + 8]) < .5 ? 0 : .5, k = (vg1 - vg0) / Math.max(3.3, hi - bot); quad(G, ax, az, qx, qz, bot, bot, ya, yb, nx, nz, ua, ua + u1, vg0, vg0, vg0 + Math.max(0, ya - bot) * k, vg0 + Math.max(0, yb - bot) * k, cr, cg, cb, .7); }
       else { const v = up(bot, ya, yb); quad(Wl, ax, az, qx, qz, bot, bot, ya, yb, nx, nz, 0, u1, 0, 0, v[0], v[1], cr, cg, cb); }
       if (!C.seg) regSeg(R, ax + x0, az + z0, qx + x0, qz + z0, hi); }
     /* Waende an Dachstufen (hoeherer Gebaeudeteil ueber tieferem Dach) */

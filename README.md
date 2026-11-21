@@ -38,7 +38,7 @@ Auf dem Handy erscheinen Joystick und Knöpfe automatisch.
 
 ## Fotos und Spieloptik
 
-Neue Spielstände beginnen in der Abendsonne. Sonnenstand und Tageszeit verändern die Farbe des Himmels, den Dunst über den Bergen, die Fensterbeleuchtung und die Lichtreflexe auf den Seen. Wohnblöcke, Büro- und Industriegebäude nutzen wiederholbare Fototexturen. Die Luftbilder und Dachformen kommen weiterhin von swisstopo.
+Neue Spielstände beginnen in der Abendsonne. Sonnenstand und Tageszeit verändern die Farbe des Himmels, den Dunst über den Bergen, die Fensterbeleuchtung und die Lichtreflexe auf den Seen. Wohnblöcke, Büro- und Industriegebäude nutzen wiederholbare Fototexturen. Die Luftbilder und Dachformen kommen weiterhin von swisstopo. Steildächer und Flachdächer tragen in der Nähe das scharfe Luftbild, Seen und Flüsse spiegeln den Himmel, und nachts schimmern die Strassen warm. Die scharfen Luftbilder laden auch auf dem Handy, dort in einem kleineren Umkreis.
 
 Über **M → Ortsansicht** öffnest du Street View oder das Google-Satellitenbild an deiner Spielposition. Ein Klick auf einen Ort in der Landeskarte wählt dessen Koordinaten. Für eine eingebettete Strassenansicht kann der Betreiber in `src/head.html` bei `#photo-view` das Attribut `data-embed-key` mit einem für die Spieldomain und die Maps Embed API eingeschränkten Browser-Schlüssel setzen und `./build.sh` ausführen. Die Links funktionieren auch ohne Schlüssel. Street View hängt von der lokalen Abdeckung ab.
 

@@ -135,7 +135,7 @@ def on_way(o):
         if c is None or t.get('area') == 'yes': return
         nd = [(n.ref, wx(n.lon), wz(n.lat)) for n in o.nodes if n.location.valid()]
         if len(nd) < 2: return
-        inreg = any(wanted(rkey(x, z)) for _, x, z in nd[::4] + [nd[-1]])
+        inreg = any((rkey(x, z) in regs) if NATTOO else wanted(rkey(x, z)) for _, x, z in nd[::4] + [nd[-1]])   # mit Landesstrassen: gleiche Teilung wie beim vollen Lauf
         if not inreg and (c > 3 or not NATTOO): return
         tun = t.get('tunnel', 'no'); br = t.get('bridge', 'no') != 'no'
         one = t.get('oneway') == 'yes' or hw.startswith('motorway') or t.get('junction') == 'roundabout'
@@ -387,7 +387,7 @@ for c, fl, name, w, nd, y0, y1 in pieces:
     if wanted(k) and incov(m.x, m.y):
         if c == 5 and L < 18 and cnt[nd[0][0]] + cnt[nd[-1][0]] < 4: continue
         RR[k].append((c, fl, name, w, y0, y1, list(ls.simplify(0.35, preserve_topology=False).coords), ls))
-    elif c <= 3 and NATTOO:
+    elif c <= 3 and NATTOO and not (k in regs and incov(m.x, m.y)):   # Strassen bestehender Regionen nicht doppelt
         co = [(round(x, 1), round(y, 1)) for x, y in ls.simplify(2.2, preserve_topology=False).coords]
         segs = cut(co, CELL); tot = sum(LineString(s).length for s in segs) or 1; run = 0
         for s in segs:

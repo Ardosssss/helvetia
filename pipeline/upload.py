@@ -38,7 +38,7 @@ def put(key, data):
 def public(key, tries=5):
     for k in range(tries):
         try:
-            with opener.open(urllib.request.Request(PUBLIC + key + '?t=' + str(time.time()), headers={'Accept-Encoding': 'gzip'}), timeout=60) as r:
+            with opener.open(urllib.request.Request(PUBLIC + key + '?t=' + str(time.time()), headers={'Accept-Encoding': 'gzip', 'User-Agent': 'Mozilla/5.0 (helvetia-upload)'}), timeout=60) as r:   # r2.dev sperrt "Python-urllib"
                 d = r.read(); return r.status, gzip.decompress(d) if r.headers.get('Content-Encoding') == 'gzip' else d, dict(r.headers)
         except urllib.error.HTTPError as e:
             if k == tries - 1: return e.code, b'', {}

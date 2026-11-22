@@ -116,6 +116,17 @@ h1 small{color:#f9d9ce;font-size:clamp(10px,1.45vw,15px);letter-spacing:.26em}
 #photo-view p{color:var(--muted);margin:0 0 14px}
 #photo-actions a{color:#ffd2bc;text-underline-offset:4px;padding:8px 0}
 #photo-actions{column-gap:20px}
+#local-photos{margin-top:16px}
+#local-photos h3{margin:0 0 8px;font-size:18px}
+#photo-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(185px,100%),1fr));gap:12px}
+#photo-gallery figure{margin:0;min-width:0;max-width:480px}
+#photo-gallery img{width:100%;height:160px;object-fit:contain;background:var(--panel);border-radius:5px}
+#photo-gallery figcaption{overflow-wrap:anywhere;font-size:13px}
+#photo-gallery a,#photo-import a{color:#ffd2bc}
+#photo-import{margin-top:12px}
+#photo-import summary{cursor:pointer}
+#photo-import label,#photo-import output{display:block;margin:8px 0}
+#photo-import input{font:inherit;max-width:100%}
 #street-frame{width:100%;height:clamp(200px,50vh,520px);border:0;margin-top:8px}
 #facade-control{border-top:1px solid var(--line);padding-top:16px;margin-top:22px}
 #facade-control summary{cursor:pointer;color:var(--fg);font-weight:600}
@@ -196,6 +207,17 @@ h1 small{color:#f9d9ce;font-size:clamp(10px,1.45vw,15px);letter-spacing:.26em}
       <h2 id="photo-place"></h2><p id="photo-coordinates"></p>
       <div id="photo-actions"><a id="street-link" target="_blank" rel="noopener noreferrer">Street View öffnen ↗</a><a id="satellite-link" target="_blank" rel="noopener noreferrer">Google-Satellitenbild ↗</a></div>
       <div id="street-container"></div>
+      <section id="local-photos" aria-labelledby="local-photos-title">
+        <h3 id="local-photos-title">Fotos aus der Umgebung</h3>
+        <p id="photo-status" role="status"></p>
+        <div id="photo-gallery"></div>
+        <details id="photo-import">
+          <summary>Fotos aus dem Google-Maps-Scraper laden</summary>
+          <label for="photo-export">JSON- oder JSONL-Export auswählen</label>
+          <input type="file" id="photo-export" accept=".json,.jsonl,.ndjson,application/json">
+          <output id="photo-import-status" aria-live="polite"></output>
+        </details>
+      </section>
       <details id="facade-control">
         <summary>Eigenes Fassadenfoto ausprobieren</summary>
         <p>Wähle ein frontal aufgenommenes Foto mit zwei Fensterachsen und zwei Stockwerken. Es gilt für alle Gebäude dieses Typs in dieser Spielsitzung.</p>

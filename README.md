@@ -38,7 +38,7 @@ Auf dem Handy erscheinen Joystick und Knöpfe automatisch.
 
 ## Fotos und Spieloptik
 
-Neue Spielstände beginnen in der Abendsonne. Sonnenstand und Tageszeit verändern die Farbe des Himmels, den Dunst über den Bergen, die Fensterbeleuchtung und die Lichtreflexe auf den Seen. Wohnblöcke, Büro- und Industriegebäude nutzen wiederholbare Fototexturen. Die Luftbilder und Dachformen kommen weiterhin von swisstopo. Steildächer und Flachdächer tragen in der Nähe das scharfe Luftbild, Seen und Flüsse spiegeln den Himmel, und nachts schimmern die Strassen warm. Die scharfen Luftbilder laden auch auf dem Handy, dort in einem kleineren Umkreis.
+Neue Spielstände beginnen in der Abendsonne. Sonnenstand und Tageszeit verändern die Farbe des Himmels, den Dunst über den Bergen, die Fensterbeleuchtung und die Lichtreflexe auf den Seen. Wohnblöcke, Büro- und Industriegebäude nutzen wiederholbare Fototexturen. Im Kanton Luzern sowie in Biel, Nidau, Port, Lyssach und Interlaken bestimmt das eidgenössische Gebäuderegister die Fassade jedes Hauses (altes Wohnhaus mit Fensterläden, Holzhaus, Altstadt, Wohnblock, modernes Haus, Büro, Industrie, Scheune) und die Zahl der Fensterreihen. Die Luftbilder und Dachformen kommen weiterhin von swisstopo. Steildächer und Flachdächer tragen in der Nähe das scharfe Luftbild, Seen und Flüsse spiegeln den Himmel, und nachts schimmern die Strassen warm. Die scharfen Luftbilder laden auch auf dem Handy, dort in einem kleineren Umkreis.
 
 Über **M → Ortsansicht** öffnest du Street View oder das Google-Satellitenbild an deiner Spielposition. Ein Klick auf einen Ort in der Landeskarte wählt dessen Koordinaten. Für eine eingebettete Strassenansicht kann der Betreiber in `src/head.html` bei `#photo-view` das Attribut `data-embed-key` mit einem für die Spieldomain und die Maps Embed API eingeschränkten Browser-Schlüssel setzen und `./build.sh` ausführen. Die Links funktionieren auch ohne Schlüssel. Street View hängt von der lokalen Abdeckung ab.
 
@@ -98,6 +98,7 @@ python3 hires.py           # besonders scharfe Kacheln für das Schwerpunktgebie
 python3 b3d_list.py        # Kachelliste swissBUILDINGS3D 3.0 für das Detailgebiet
 python3 b3d_fetch.py       # Dachflächen aus den CityGML-Kacheln (rund 4,5 GB Download; mit `baeume` nur das Schwerpunktgebiet, genügt für trees.py)
 python3 b3d_gdb.py         # Kacheln, die es nur als FileGDB gibt (Genf, Lausanne, Wallis, Graubünden)
+python3 gwr.py             # Gebäuderegister (BFS) für Luzern und Bern: Gebäudeart, Baujahr, Stockwerke je Gebäude
 python3 regions.py         # Regionen, Landesstrassen, Tunnel, Index (nur einzelne Regionen nachführen: python3 regions.py -7_-4 --landesstrassen)
 python3 trees.py           # echte Bäume im Schwerpunktgebiet (swissSURFACE3D minus swissALTI3D, rund 25 GB Download; braucht die Kacheln von hires.py)
 python3 upload.py          # geänderte Dateien aus w/, r/, n/, z/ in den R2-Bucket laden
@@ -116,6 +117,7 @@ Entwicklungsumgebung; ausserhalb davon die Zeile mit `cafile=` anpassen.
 - Karten- und Gebäudedaten: © OpenStreetMap-Mitwirkende, [ODbL](https://www.openstreetmap.org/copyright).
   Die Dateien in `r/` und `n/` sind daraus abgeleitet und stehen ebenfalls unter der ODbL.
 - Luftbilder (SWISSIMAGE), Höhenmodell (swissALTI3D), Dachformen der Gebäude (swissBUILDINGS3D 3.0) und Baumstandorte (aus swissSURFACE3D Raster): © [swisstopo](https://www.swisstopo.admin.ch).
+- Gebäudeart, Bauperiode und Geschosszahl: Eidg. Gebäude- und Wohnungsregister (GWR), © [BFS](https://www.housing-stat.ch), OGD.
 - Höhenmodell 100 m: Mapzen Terrain Tiles (u. a. SRTM, EU-DEM).
 - 3D-Bibliothek: [three.js](https://threejs.org) (MIT).
 - Fassadenfotos (CC0), für das Spiel zugeschnitten und gekachelt. Wohnblock aus [rubberducks Fototexturen](https://opengameart.org/content/high-res-texture-pack-1), Büro und Industrie aus Scousers [building_hsp](https://opengameart.org/node/34314) und [building_center](https://opengameart.org/node/34291).

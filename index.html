@@ -468,7 +468,7 @@ function nearestPlace(x, z, big) { let best = null, bd = 1e18; for (const p of P
 /* ============================================================ Fassaden, Daecher, Materialien */
 function zFacade(ty) {                                 // Kachel: 2 Fensterachsen x 2 Geschosse
   const W = 256, cm = document.createElement('canvas'), ce = document.createElement('canvas'); cm.width = cm.height = ce.width = ce.height = W; const g = cm.getContext('2d'), e = ce.getContext('2d'); e.fillStyle = '#000'; e.fillRect(0, 0, W, W);
-  g.fillStyle = ['#f4f1ea', '#eeeae2', '#dfe4e8', '#e6e6e3', '#e9e3d6', '#8a6242', '#efeeea', '#7d5c3e'][ty]; g.fillRect(0, 0, W, W);
+  g.fillStyle = ['#f4f1ea', '#eeeae2', '#dfe4e8', '#e6e6e3', '#e9e3d6', '#8a6242', '#efeeea', '#a07a55'][ty]; g.fillRect(0, 0, W, W);
   const im = g.getImageData(0, 0, W, W); for (let i = 0; i < W * W; i++) { const n = (h2(i % W + ty * 31, i / W | 0) - .5) * 12; im.data[i * 4] += n; im.data[i * 4 + 1] += n; im.data[i * 4 + 2] += n; } g.putImageData(im, 0, 0);
   if (ty === 4) { g.strokeStyle = 'rgba(0,0,0,.13)'; g.lineWidth = 1; for (let y = 0; y < W; y += 16) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); for (let x = (y / 16 % 2) * 16; x < W; x += 32) { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 16); g.stroke(); } } }
   if (ty === 3) { g.strokeStyle = 'rgba(0,0,0,.1)'; for (let x = 0; x < W; x += 21) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, W); g.stroke(); } }
@@ -516,7 +516,7 @@ for (const [type, file] of [[1, 'wohnblock'], [2, 'buero'], [3, 'industrie']]) {
 }
 // Erdgeschosse: eine Zeile je Bauart, zwei Achsen breit
 const zGround = (() => { const W = 256, RH = 128, cvs = document.createElement('canvas'); cvs.width = W; cvs.height = RH * 8; const g = cvs.getContext('2d');
-  for (let t = 0; t < 8; t++) { const y0 = (7 - t) * RH; g.fillStyle = ['#ece8de', '#dedad0', '#cfd5da', '#d9d9d5', '#dcd5c5', '#9a958c', '#e9e8e4', '#76563a'][t]; g.fillRect(0, y0, W, RH);
+  for (let t = 0; t < 8; t++) { const y0 = (7 - t) * RH; g.fillStyle = ['#ece8de', '#dedad0', '#cfd5da', '#d9d9d5', '#dcd5c5', '#9a958c', '#e9e8e4', '#9a7550'][t]; g.fillRect(0, y0, W, RH);
     const im = g.getImageData(0, y0, W, RH); for (let i = 0; i < W * RH; i++) { const n = (h2(i % W + t * 17, i / W | 0) - .5) * 12; im.data[i * 4] += n; im.data[i * 4 + 1] += n; im.data[i * 4 + 2] += n; } g.putImageData(im, 0, y0);
     g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(0, y0 + RH - 9, W, 9); g.fillStyle = 'rgba(0,0,0,.1)'; g.fillRect(0, y0, W, 4);
     const door = (x, w, h, c) => { g.fillStyle = c; g.fillRect(x, y0 + RH - 9 - h, w, h); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 2; g.strokeRect(x, y0 + RH - 9 - h, w, h); }, win = (x, y, w, h) => { g.fillStyle = '#33424d'; g.fillRect(x, y0 + y, w, h); const gr = g.createLinearGradient(x, y0 + y, x + w, y0 + y + h); gr.addColorStop(0, 'rgba(160,200,230,.4)'); gr.addColorStop(.6, 'rgba(160,200,230,0)'); g.fillStyle = gr; g.fillRect(x, y0 + y, w, h); g.strokeStyle = '#f6f4ee'; g.lineWidth = 3; g.strokeRect(x, y0 + y, w, h); };

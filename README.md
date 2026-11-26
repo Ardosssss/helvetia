@@ -31,6 +31,7 @@ Branch wählen, Ordner `/ (root)`.
 | G | Garage: Fahrzeug holen, Spezialfahrzeuge bestellen |
 | C | Charakter wechseln |
 | M | Karte, Reise in jeden Ort |
+| P | echte Fotos aus der Umgebung (erscheint, wenn es in der Nähe welche gibt) |
 | Shift / Leertaste | rennen · springen / Handbremse (Helikopter: sinken · steigen) |
 | R | zurück auf die nächste Strasse |
 
@@ -72,6 +73,7 @@ Die folgenden Ordner entstehen durch die Pipeline und liegen im R2-Bucket (nicht
 | `w/` | Landesdaten: Höhenmodell 100 m (`dem*.png`), Luftbilder Schweiz (`ortho.jpg`, `n_*.jpg`) und Kanton Luzern (`l_*.jpg`), Ortsliste, Index mit Tunnelportalen |
 | `r/` | 87 Regionen (je 8 × 8 km): `*.json` mit Strassen, Wasser, Bäumen, Höhenraster 25 m und den Gebäuden ohne Vermessungsdach; `*.b3z` mit den echten Dachformen (swissBUILDINGS3D, rund 470 000 Gebäude, komprimiertes Binärformat, siehe `pipeline/regions.py`); `*.trz` mit echten Bäumen (Standort, Höhe, Krone) im ganzen Kanton Luzern sowie in Biel, Nidau, Port, Lyssach und Interlaken (rund 5 Millionen Bäume in 44 Regionen) |
 | `n/` | Hauptstrassen ausserhalb der Detailgebiete |
+| `f/` | echte Fotos mit GPS-Position (Wikimedia Commons) rund um Beromünster für die Fotoansicht, `index.json` mit Autor, Lizenz und Quelle |
 | `z/` | Luftbilder der 145 Orte (rund 1 m pro Pixel, auf das 800-m-Geländeraster ausgerichtet) und besonders scharfe 800-m-Kacheln `h_*.jpg` (0,4 m pro Pixel) für den ganzen Kanton Luzern sowie Biel, Nidau, Port, Lyssach und Interlaken (2620 Kacheln, rund 1,8 GB) |
 
 Nach Änderungen in `src/`: `./build.sh` ausführen und `index.html` mit einchecken.
@@ -101,6 +103,7 @@ python3 b3d_gdb.py         # Kacheln, die es nur als FileGDB gibt (Genf, Lausann
 python3 gwr.py             # Gebäuderegister (BFS) für Luzern und Bern: Gebäudeart, Baujahr, Stockwerke je Gebäude
 python3 regions.py         # Regionen, Landesstrassen, Tunnel, Index (nur einzelne Regionen nachführen: python3 regions.py -7_-4 --landesstrassen)
 python3 trees.py           # echte Bäume im Schwerpunktgebiet (swissSURFACE3D minus swissALTI3D, rund 25 GB Download; braucht die Kacheln von hires.py)
+python3 fotos.py           # echte Fotos mit GPS (Wikimedia Commons, aus data/neu/) für die Fotoansicht im Spiel -> f/
 python3 upload.py          # geänderte Dateien aus w/, r/, n/, z/ in den R2-Bucket laden
 ```
 
@@ -119,6 +122,7 @@ Entwicklungsumgebung; ausserhalb davon die Zeile mit `cafile=` anpassen.
 - Luftbilder (SWISSIMAGE), Höhenmodell (swissALTI3D), Dachformen der Gebäude (swissBUILDINGS3D 3.0) und Baumstandorte (aus swissSURFACE3D Raster): © [swisstopo](https://www.swisstopo.admin.ch).
 - Gebäudeart, Bauperiode und Geschosszahl: Eidg. Gebäude- und Wohnungsregister (GWR), © [BFS](https://www.housing-stat.ch), OGD.
 - Höhenmodell 100 m: Mapzen Terrain Tiles (u. a. SRTM, EU-DEM).
+- Fotos in der Fotoansicht (Taste P): Wikimedia Commons, je Bild mit Autor und Lizenz (meist CC BY-SA 4.0) angezeigt; Quelle und Lizenz stehen in `f/index.json`.
 - 3D-Bibliothek: [three.js](https://threejs.org) (MIT).
 - Fassadenfotos (CC0), für das Spiel zugeschnitten und gekachelt. Wohnblock aus [rubberducks Fototexturen](https://opengameart.org/content/high-res-texture-pack-1), Büro und Industrie aus Scousers [building_hsp](https://opengameart.org/node/34314) und [building_center](https://opengameart.org/node/34291).
 - Bäume und Strassenbelag (CC0). Die Laubkrone und der Belag verwenden Fotodetails aus [rubberducks Fototexturen](https://opengameart.org/content/high-res-texture-pack-1). Die Nadelbaumaufnahme stammt aus [High-res tree textures](https://opengameart.org/content/high-res-tree-textures).

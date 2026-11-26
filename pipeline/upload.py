@@ -12,7 +12,7 @@ from geo import opener
 ACCOUNT = os.environ.get('R2_ACCOUNT', '80e87bd79b0b058813d0bd8c09f25feb'); BUCKET = os.environ.get('R2_BUCKET', 'helvetia')
 PUBLIC = os.environ.get('R2_PUBLIC', 'https://pub-fb46c74520864c0ab68934bf502da03f.r2.dev/')
 API = f'https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/r2/buckets/{BUCKET}/objects/'
-ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'); DIRS = ['w', 'r', 'n', 'z']
+ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'); DIRS = ['w', 'r', 'n', 'z', 'f']
 TYPES = {'.json': 'application/json', '.jpg': 'image/jpeg', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8'}
 FRESH = {'w/index.json', 'w/places.json', 'manifest.json'}      # bei jedem Spielstart neu pruefen; alles andere darf der Browser einen Tag behalten
 RATE = 3.3; _lock = threading.Lock(); _next = [0.0]              # Cloudflare erlaubt 1200 API-Aufrufe in 5 Minuten

@@ -165,7 +165,7 @@ const touchUI = () => { $('joy').hidden = false; $('pad').hidden = false; $('key
 const NAV = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 addEventListener('keydown', e => { if (e.target && ['INPUT', 'SELECT', 'SUMMARY'].includes(e.target.tagName)) { if (e.code === 'Escape') toggleMap(false); return; } if (e.repeat) { if (NAV.includes(e.code)) e.preventDefault(); return; } keys[e.code] = true;
   if (e.code === 'KeyE' || e.code === 'KeyF') act(); if (e.code === 'Enter' && !started && !$('go').disabled) begin();
-  if (e.code === 'KeyG') toggleGarage(); if (e.code === 'KeyC') switchChar(); if (e.code === 'KeyM') toggleMap(); if (e.code === 'Escape') { toggleMap(false); toggleGarage(false); } if (e.code === 'KeyR') unstick();
+  if (e.code === 'KeyG') toggleGarage(); if (e.code === 'KeyC') switchChar(); if (e.code === 'KeyM') toggleMap(); if (e.code === 'KeyP') toggleFotos(); if (e.code === 'Escape') { toggleMap(false); toggleGarage(false); } if (e.code === 'KeyR') unstick();
   if (NAV.includes(e.code)) e.preventDefault(); });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
@@ -189,6 +189,19 @@ function readInput() { let ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.K
 /* ============================================================ HUD */
 let toastT = 0, lastToast = '';
 function toast(s) { const n = performance.now(); if (s === lastToast && n - toastT < 2500) return; lastToast = s; toastT = n; const t = $('toast'); t.textContent = s; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2800); }
+/* ============================================================ Echte Fotos (Wikimedia Commons) in der Naehe des Spielers */
+let FOTOS = [], fotoNear = [], fotoOpen = false, fotoI = 0;
+getJSON(DATA + 'f/index.json').then(l => { FOTOS = l; }).catch(() => {});
+function updFotoNear(x, z) { fotoNear = FOTOS.map(f => [Math.hypot(f[0] - x, f[1] - z), f]).filter(a => a[0] < 300).sort((a, b) => a[0] - b[0]); const b = $('tFoto'); b.hidden = !fotoNear.length; if (fotoNear.length) b.textContent = 'Fotos ' + fotoNear.length; }
+function showFoto() { const a = fotoNear[fotoI]; if (!a) return; const f = a[1], ch = chars[active], v = ch.veh, px = v ? v.x : ch.x, pz = v ? v.z : ch.z, dirs = ['Norden', 'Nordosten', 'Osten', 'Südosten', 'Süden', 'Südwesten', 'Westen', 'Nordwesten'], ang = Math.atan2(f[0] - px, -(f[1] - pz));
+  $('foimg').src = DATA + 'f/' + f[2] + '.jpg'; $('foimg').alt = f[3]; $('fotitle').textContent = f[3];
+  $('fopos').textContent = (fotoI + 1) + ' von ' + fotoNear.length + ' · aufgenommen ' + (a[0] < 15 ? 'hier' : Math.round(a[0]) + ' m Richtung ' + dirs[Math.round((ang + TAU) % TAU / (TAU / 8)) % 8]);
+  $('focredit').innerHTML = 'Foto: ' + esc(f[4]) + ' · ' + (f[6] ? '<a href="' + esc(f[6]) + '" target="_blank" rel="noopener noreferrer">' + esc(f[5]) + '</a>' : esc(f[5])) + ' · <a href="' + esc(f[7]) + '" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>'; }
+function toggleFotos(on) { const want = on === undefined ? !fotoOpen : on; if (want && (!started || !fotoNear.length)) return; fotoOpen = want; if (fotoOpen) { toggleMap(false); toggleGarage(false); fotoI = 0; showFoto(); } $('fotov').hidden = !fotoOpen; }
+$('tFoto').addEventListener('click', () => toggleFotos()); $('foclose').addEventListener('click', () => toggleFotos(false));
+$('foprev').addEventListener('click', () => { fotoI = (fotoI - 1 + fotoNear.length) % fotoNear.length; showFoto(); }); $('fonext').addEventListener('click', () => { fotoI = (fotoI + 1) % fotoNear.length; showFoto(); });
+addEventListener('keydown', e => { if (!fotoOpen) return; if (e.code === 'ArrowRight') $('fonext').click(); else if (e.code === 'ArrowLeft') $('foprev').click(); else if (e.code === 'Escape') toggleFotos(false); });
+
 function updHud() {
   const ch = chars[active], v = ch.veh, x = v ? v.x : ch.x, z = v ? v.z : ch.z, y = v ? v.y : ch.y, here = placeAt(x, z), h = nearRoad(x, z, 7, 26, false); let nm, cls = '', sub = fmtM(y) + ' m ü. M.';
   if (h && h.rd.name) { nm = h.rd.name; cls = here ? 'city' : h.rd.cls === 0 ? 'pass' : ''; if (here) sub = here.name + ' · ' + sub; }
@@ -258,7 +271,7 @@ function frame(now) {
   cy = Math.max(cy, Math.max(H(cx, cz), waterLevel(cx, cz)) + .5); camera.position.set(cx, cy, cz); camera.lookAt(camT);
   updEnv(camT);
   if (ac && engGain) { const sp = v ? Math.hypot(v.vx, v.vz) : 0; engGain.gain.setTargetAtTime(v && sound && run ? (v.t.heli ? .05 * v.rs : .028 + Math.abs(inp ? inp.iy : 0) * .02) : 0, ac.currentTime, .1); eng.frequency.setTargetAtTime(v ? (v.t.heli ? 38 + v.rs * 30 : 48 + sp * 2.6 + (inp ? Math.abs(inp.iy) * 14 : 0)) : 50, ac.currentTime, .08); }
-  if (started && now - hudT > .12) { hudT = now; updHud(); }
+  if (started && now - hudT > .12) { hudT = now; updHud(); if (!fotoOpen && FOTOS.length) { const c = chars[active], v = c.veh; updFotoNear(v ? v.x : c.x, v ? v.z : c.z); } }
   if (run && now - saveT > 8) { saveT = now; save(); }
   bgCam.position.copy(camera.position); bgCam.quaternion.copy(camera.quaternion); bgCam.fov = camera.fov; bgCam.updateProjectionMatrix(); sky.position.copy(camera.position);
   renderer.clear(); renderer.render(bgScene, bgCam); renderer.clearDepth(); renderer.render(scene, camera);

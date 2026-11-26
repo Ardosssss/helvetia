@@ -122,6 +122,10 @@ h1 small{color:#f9d9ce;font-size:clamp(10px,1.45vw,15px);letter-spacing:.26em}
 #facade-control p{margin:8px 0}
 #facade-control select,#facade-control input{font:inherit;max-width:100%}
 #facade-control label{display:block;margin:8px 0}
+#fobody{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+#foimg{max-width:100%;max-height:100%;object-fit:contain;border-radius:4px}
+#foactions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#focredit a{color:#ffd2bc}
 #facade-feedback{display:block;color:#ffd2bc;margin-top:6px}
 #garbody{flex:1;min-height:0;overflow-y:auto;touch-action:pan-y;display:flex;flex-direction:column;gap:10px;max-width:760px;width:100%;margin:0 auto}
 #garbody h3{margin:6px 0 0;font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
@@ -159,13 +163,14 @@ h1 small{color:#f9d9ce;font-size:clamp(10px,1.45vw,15px);letter-spacing:.26em}
         <button class="tool" id="tGar" type="button">Garage</button>
         <button class="tool" id="tSw" type="button">Wechseln</button>
         <button class="tool" id="tSnd" type="button" aria-pressed="true">Ton</button>
+        <button class="tool" id="tFoto" type="button" hidden>Fotos</button>
       </div>
     </div>
     <div id="mission" hidden></div>
     <div id="toast" role="status"></div>
     <div id="prompt" hidden></div>
     <div id="speedo" hidden><b id="kmh">0</b><span>km/h</span><em id="vname"></em></div>
-    <div id="keys"><kbd>WASD</kbd> bewegen · <kbd>Maus ziehen</kbd> umsehen · <kbd>E</kbd> ein-/aussteigen · <kbd>G</kbd> Garage<br><kbd>Shift</kbd> rennen · <kbd>Leertaste</kbd> springen / Handbremse · <kbd>C</kbd> Charakter · <kbd>M</kbd> Karte · <kbd>R</kbd> zurück auf die Strasse</div>
+    <div id="keys"><kbd>WASD</kbd> bewegen · <kbd>Maus ziehen</kbd> umsehen · <kbd>E</kbd> ein-/aussteigen · <kbd>G</kbd> Garage<br><kbd>Shift</kbd> rennen · <kbd>Leertaste</kbd> springen / Handbremse · <kbd>C</kbd> Charakter · <kbd>M</kbd> Karte · <kbd>P</kbd> Fotos · <kbd>R</kbd> zurück auf die Strasse</div>
     <div id="joy" hidden><i id="knob"></i></div>
     <div id="pad" hidden>
       <button class="pb" id="bC" type="button">Rennen</button>
@@ -183,7 +188,7 @@ h1 small{color:#f9d9ce;font-size:clamp(10px,1.45vw,15px);letter-spacing:.26em}
     <button id="go" type="button" disabled>Losfahren</button>
     <p id="load">Die Schweiz wird aufgebaut …</p>
     <p id="how">Die ganze Schweiz im Massstab 1:1 mit echtem Gelände. 27 Städte und der ganze Kanton Luzern mit jedem Gebäude und jeder Strasse. Fahrzeuge holst du jederzeit aus der Garage.</p>
-    <p class="credit">Karten: © OpenStreetMap-Mitwirkende · Luftbilder: © swisstopo · Höhen: © swisstopo, Mapzen Terrain Tiles</p>
+    <p class="credit">Karten: © OpenStreetMap-Mitwirkende · Luftbilder: © swisstopo · Höhen: © swisstopo, Mapzen Terrain Tiles · Gebäudedaten: © BFS (GWR) · Fotos: Wikimedia Commons, Autor und Lizenz in der Fotoansicht</p>
   </div></div>
 
   <div id="mapov" class="ov" hidden>
@@ -212,6 +217,10 @@ h1 small{color:#f9d9ce;font-size:clamp(10px,1.45vw,15px);letter-spacing:.26em}
       <h3>Fahrzeuge</h3><div class="vgrid" id="vstd"></div>
       <h3 id="spt">Spezialfahrzeuge</h3><p>Nur dieser Charakter kann sie bestellen. Die Modelle sind Platzhalter, bis die echten feststehen.</p><div class="vgrid" id="vsp"></div>
     </div>
+  </div>
+  <div id="fotov" class="ov" hidden>
+    <div class="ovbar"><div><b id="fotitle">Fotos</b><br><span id="fopos"></span><br><span class="credit" id="focredit"></span></div><div id="foactions"><button class="tool" id="foprev" type="button">Zurück</button><button class="tool" id="fonext" type="button">Weiter</button><button class="tool" id="foclose" type="button">Schliessen</button></div></div>
+    <div id="fobody"><img id="foimg" alt=""></div>
   </div>
   <div id="fade"></div>
 </div>

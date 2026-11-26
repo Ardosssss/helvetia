@@ -102,8 +102,23 @@ function treeCrown(pine) {
   return geo({position: pos, normal, uv}, idx);
 }
 const zLeafGeo = treeCrown(false), zFirGeo = treeCrown(true);
-const WALLC = [[0xf4efe4, 0xefe2c8, 0xf2d9c4, 0xe7e9e2, 0xf7f3ea, 0xe9d6b8, 0xdfd3c2], [0xe6ddcb, 0xd9cdb8, 0xe9e4d9, 0xcfc7b8, 0xe2cdb4, 0xd4d7d6], [0xc9d2d8, 0xb9c2c9, 0xd9dcdc, 0xaab6bf, 0xe3e3df], [0xb9bbb8, 0xa9aba9, 0xc9c5ba, 0x9aa3a6], [0xd9cfb8, 0xcfc6ae, 0xe3dccb, 0xc4b89c], [0xffffff, 0xe6d2bc, 0xd9c2a6, 0xf2e2cc], [0xf6f6f3, 0xeceae4, 0xe2e0da, 0xd4d6d6, 0xf3eee4, 0xbfc2c4], [0xffffff, 0xeadccb, 0xd9c6b0, 0xc9b8a4]].map(a => a.map(C3));
+const WALLC = [[0xf4efe4, 0xefe2c8, 0xf2d9c4, 0xe7e9e2, 0xf7f3ea, 0xe9d6b8, 0xdfd3c2, 0xf6f4ef, 0xeac3b2, 0xd8e0cc],   // wie die Altstadt Beromuenster: weiss, lachsrosa, blassgruen [0xe6ddcb, 0xd9cdb8, 0xe9e4d9, 0xcfc7b8, 0xe2cdb4, 0xd4d7d6], [0xc9d2d8, 0xb9c2c9, 0xd9dcdc, 0xaab6bf, 0xe3e3df], [0xb9bbb8, 0xa9aba9, 0xc9c5ba, 0x9aa3a6], [0xd9cfb8, 0xcfc6ae, 0xe3dccb, 0xc4b89c, 0xf3f0ea, 0xe6bba9, 0xd6dfcb, 0xf0e6d2], [0xffffff, 0xe6d2bc, 0xd9c2a6, 0xf2e2cc], [0xf6f6f3, 0xeceae4, 0xe2e0da, 0xd4d6d6, 0xf3eee4, 0xbfc2c4], [0xffffff, 0xeadccb, 0xd9c6b0, 0xc9b8a4]].map(a => a.map(C3));
 const ROOFC = { tile: [0x8a4a35, 0x7a3f30, 0x6b4a3f, 0x93553c, 0x5f4a44, 0x7d5a48].map(C3), flat: [0x8c8f91, 0x9a9a94, 0x7d8286, 0xa5a59c, 0x6f7a6c].map(C3), metal: [0xaab0b3, 0x9aa1a5, 0xb9b6ad].map(C3), old: [0x6b5a4f, 0x5a6f63, 0x4f5a60].map(C3) };
+
+/* Hohe Sendetuerme (z. B. Blosenbergturm, 217 m): Stahlfachwerk mit gespreizten Beinen, oben rot-weiss gestrichen */
+const latticeMat = new THREE.MeshLambertMaterial({ vertexColors: true, alphaTest: .5, side: THREE.DoubleSide, map: canvasTex(64, 64, (g, w, h) => {
+  g.clearRect(0, 0, w, h); g.strokeStyle = '#fff'; g.lineCap = 'square';
+  g.lineWidth = 9; g.beginPath(); g.moveTo(4, 0); g.lineTo(4, h); g.moveTo(w - 4, 0); g.lineTo(w - 4, h); g.stroke();
+  g.lineWidth = 6; g.beginPath(); g.moveTo(0, 3); g.lineTo(w, 3); g.moveTo(4, 0); g.lineTo(w - 4, h); g.moveTo(w - 4, 0); g.lineTo(4, h); g.stroke(); }) });
+function latticeTower(x, y, z, hh) {
+  const N = 26, pos = [], uv = [], col = [], nor = [], RED = C3(0xc0392b), WH = C3(0xf1f1ee), GR = C3(0x9aa0a3);
+  const hw = f => f < .7 ? .9 + 13.5 * Math.pow(1 - f / .7, 2.2) : .55;
+  for (let k = 0; k < N; k++) { const f0 = k / N, f1 = (k + 1) / N, a = hw(f0), b = hw(f1), y0 = y + f0 * hh, y1 = y + f1 * hh, c = f0 < .22 ? GR : (k >> 1) % 2 ? WH : RED;
+    for (let s = 0; s < 4; s++) { const ang = s * Math.PI / 2, ca = Math.cos(ang), sa = Math.sin(ang), P = (r, q, yy) => pos.push(x + ca * r - sa * q, yy, z + sa * r + ca * q);
+      P(a, -a, y0); P(a, a, y0); P(b, b, y1); P(a, -a, y0); P(b, b, y1); P(b, -b, y1);
+      uv.push(0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1); for (let q = 0; q < 6; q++) { col.push(...c); nor.push(ca, .25, sa); } } }
+  const g = geo({ position: pos, normal: nor, color: col, uv }); const m = new THREE.Mesh(g, latticeMat); m.frustumCulled = false; return m;
+}
 
 /* ============================================================ Strassennetze (Region oder Landesstrassen-Zelle) */
 const roadSets = new Set(), GK = (cx, cz) => (cx + 8192) * 16384 + cz + 8192;
@@ -233,7 +248,7 @@ async function buildRegion(R, d, b3, tr) {
   for (let i = 0; i < T.length; i += 3 * step) { const x = T[i] * 2, z = T[i + 1] * 2; if (R.wm && regWater(R, x + x0, z + z0)) continue; if (R.trCells && R.trCells.has(Math.floor(x / 400) + ',' + Math.floor(z / 400))) continue; const s = .75 + r() * .7, y = H(x + x0, z + z0); (T[i + 2] ? ta : tb).push({ x, z, m: TM(x, y - .2, z, s, s * (.9 + r() * .35), s, 0, r() * TAU, 0), c: treeTint[r() * 4 | 0] }); if (r() < .6) regSeg(R, x + x0, z + z0, x + x0, z + z0, y + 5); }
   instChunks(zFirGeo, treeMat, ta, R.g, 400, true, R.far); instChunks(zLeafGeo, treeMat, tb, R.g, 400, true, R.far);
   for (const im of R.far) if (im.isInstancedMesh) { im.userData.c = { x: im.userData.c.x + x0, z: im.userData.c.z + z0 }; }
-  if (d.tw && d.tw.length) { const parts = []; for (const t of d.tw) { const x = t[0] / 10, z = t[1] / 10, hh = t[2] / 10, y = H(x + x0, z + z0), w = clamp(hh / 26, 1.2, 9); if (t[3]) parts.push([new THREE.CylinderGeometry(w * .35, w * .5, hh, 10), 0x9a9c9a, TM(x, y + hh / 2, z)]); else for (let k = 0; k < 7; k++) { const f0 = k / 7, f1 = (k + 1) / 7, wa = lerp(w, .5, f0), wb = lerp(w, .5, f1), g = new THREE.CylinderGeometry(wb * .7, wa * .7, hh / 7, 4, 1, true); parts.push([g, k % 2 ? 0xf2f2f0 : 0xc62828, TM(x, y + hh * (f0 + f1) / 2, z, 1, 1, 1, 0, Math.PI / 4, 0)]); } regSeg(R, x + x0 - w / 2, z + z0, x + x0 + w / 2, z + z0, y + hh); regSeg(R, x + x0, z + z0 - w / 2, x + x0, z + z0 + w / 2, y + hh); }
+  if (d.tw && d.tw.length) { const parts = []; for (const t of d.tw) { const x = t[0] / 10, z = t[1] / 10, hh = t[2] / 10, y = H(x + x0, z + z0), w = clamp(hh / 26, 1.2, 9); if (!t[3] && hh >= 120) { R.g.add(latticeTower(x, y, z, hh)); regSeg(R, x + x0 - 4, z + z0, x + x0 + 4, z + z0, y + hh); regSeg(R, x + x0, z + z0 - 4, x + x0, z + z0 + 4, y + hh); continue; } if (t[3]) parts.push([new THREE.CylinderGeometry(w * .35, w * .5, hh, 10), 0x9a9c9a, TM(x, y + hh / 2, z)]); else for (let k = 0; k < 7; k++) { const f0 = k / 7, f1 = (k + 1) / 7, wa = lerp(w, .5, f0), wb = lerp(w, .5, f1), g = new THREE.CylinderGeometry(wb * .7, wa * .7, hh / 7, 4, 1, true); parts.push([g, k % 2 ? 0xf2f2f0 : 0xc62828, TM(x, y + hh * (f0 + f1) / 2, z, 1, 1, 1, 0, Math.PI / 4, 0)]); } regSeg(R, x + x0 - w / 2, z + z0, x + x0 + w / 2, z + z0, y + hh); regSeg(R, x + x0, z + z0 - w / 2, x + x0, z + z0 + w / 2, y + hh); }
     const m = new THREE.Mesh(merge(parts), zPropMat); m.castShadow = true; m.frustumCulled = false; R.g.add(m); }
   /* Wasserflaechen auf Hoehe des echten Wasserspiegels */
   if (wpolys.length) { const wpos = [], widx = []; for (const [con, holes] of wpolys) { let tris; try { tris = THREE.ShapeUtils.triangulateShape(con, holes); } catch (e) { continue; } const all = con.concat(...holes), bs = wpos.length / 3; for (const q of all) wpos.push(q.x, rawH(R, q.x + x0, q.y + z0) + .08, q.y); for (const t of tris) { const a = all[t[0]], b = all[t[1]], c = all[t[2]]; if ((b.y - a.y) * (c.x - a.x) - (b.x - a.x) * (c.y - a.y) >= 0) widx.push(bs + t[0], bs + t[1], bs + t[2]); else widx.push(bs + t[0], bs + t[2], bs + t[1]); } }

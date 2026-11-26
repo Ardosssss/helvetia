@@ -110,7 +110,7 @@ function setPhotoView(on) {
   $('photo-toggle').setAttribute('aria-expanded', String(on));
   $('photo-toggle').textContent = on ? 'Zur Karte' : 'Ortsansicht';
   container.replaceChildren();
-  if (!on) return;
+  if (!on) { closePlacePhotos(); return; }
   const ch = chars[active], at = mapSel || ch.veh || ch;
   const coordinates = (LAT_C - at.z / KZM).toFixed(6) + ',' + (LON_C + at.x / KXM).toFixed(6);
   const heading = mapSel ? 0 : (180 - at.a * 180 / Math.PI + 360) % 360;
@@ -120,6 +120,7 @@ function setPhotoView(on) {
   const satellite = new URLSearchParams({ api: '1', map_action: 'map', center: coordinates, zoom: '18', basemap: 'satellite' });
   $('street-link').href = 'https://www.google.com/maps/@?' + street;
   $('satellite-link').href = 'https://www.google.com/maps/@?' + satellite;
+  showPlacePhotos(at.x, at.z);
   if (panel.dataset.embedKey) {
     const frame = document.createElement('iframe');
     frame.id = 'street-frame';

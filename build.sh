@@ -7,7 +7,7 @@ body() {
   cat src/head.html
   echo '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>'
   echo '<script>'; echo '(() => {'
-  cat src/a_core.js src/b_world.js src/c_zone.js src/d_ent.js src/navigation.js src/e_game.js
+  cat src/a_core.js src/b_world.js src/c_zone.js src/d_ent.js src/navigation.js src/ortsfotos.js src/e_game.js
   echo '})();'; echo '</script>'
 }
 if [ "$1" = "artifact" ]; then

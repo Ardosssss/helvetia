@@ -43,6 +43,10 @@ Neue Spielstände beginnen in der Abendsonne. Sonnenstand und Tageszeit verände
 
 Über **M → Ortsansicht** öffnest du Street View oder das Google-Satellitenbild an deiner Spielposition. Ein Klick auf einen Ort in der Landeskarte wählt dessen Koordinaten. Für eine eingebettete Strassenansicht kann der Betreiber in `src/head.html` bei `#photo-view` das Attribut `data-embed-key` mit einem für die Spieldomain und die Maps Embed API eingeschränkten Browser-Schlüssel setzen und `./build.sh` ausführen. Die Links funktionieren auch ohne Schlüssel. Street View hängt von der lokalen Abdeckung ab.
 
+Unter **M → Ortsansicht → Fotos aus der Umgebung** erscheinen Fotos im Umkreis von 2,5 km. Für Zürich, Genf, Luzern und Bern sind Ansichten hinterlegt. An anderen Standorten sucht das Spiel auf Wikimedia Commons nach georeferenzierten Bildern. Zu jedem Foto führt ein Link zur Quelle.
+
+Über **Fotos aus dem Google-Maps-Scraper laden** kannst du einen JSON- oder JSONL-Export aus [deinem Scraper](https://github.com/Ardosssss/google-maps-scraper) auswählen. Den Export erstellst du beim Suchlauf mit `-json -results orte.jsonl`. Die Ortsansicht ordnet die Treffer nach der Entfernung zum gewählten Ort. Die Bildquellen laden erst beim Öffnen der Ortsansicht. Die ausgewählte Datei bleibt im Browser und gilt für die laufende Sitzung. Ein vorhandenes Panorama lässt sich am jeweiligen Treffer mit **Street View** öffnen.
+
 Unter **Ortsansicht → Eigenes Fassadenfoto ausprobieren** lässt sich ein eigenes oder freigegebenes Foto direkt im Spiel testen. Die Auswahl gilt für den Gebäudetyp während der aktuellen Sitzung. Für eine dauerhafte Änderung nimmt der Importer eine lokale Bilddatei oder den Freigabelink zu einer öffentlich lesbaren Bilddatei in Google Drive entgegen. Ein frontal aufgenommenes Rechteck mit zwei Fensterachsen und zwei Stockwerken passt auf das vorhandene Gebäuderaster.
 
 ```sh
